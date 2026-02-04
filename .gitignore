@@ -1,0 +1,61 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+out
+.next
+.turbo
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+apps/api/.env
+apps/web/.env
+libs/database/.env
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+*.orig
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Testing
+coverage
+.nyc_output
+
+# Prisma
+libs/database/prisma/*.db
+libs/database/prisma/*.db-journal
+
+# Cache
+.cache
+.eslintcache
+
+# Claude/AI local settings
+.claude
+
+# Vercel
+.vercel
+
+# Firebase (FCM service account keys)
+*-firebase-adminsdk-*.json
+serviceAccountKey.json

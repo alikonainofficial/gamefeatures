@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  GAMER
+  DEVELOPER
+}
+
+enum RequestType {
+  ADD_FEATURE
+  REMOVE_FEATURE
+}
+
+enum RequestStatus {
+  OPEN
+  UNDER_REVIEW
+  IN_PROGRESS
+  IMPLEMENTED
+  DECLINED
+}
+
+enum FollowType {
+  USER
+  GAME
+}
+
+enum NotificationType {
+  FOLLOWED_USER_POST
+  FOLLOWED_GAME_UPDATE
+  REQUEST_STATUS_CHANGE
+  COMMENT_ON_REQUEST
+  VOTE_MILESTONE
+}
+
+enum EntityType {
+  USER
+  GAME
+  REQUEST
+  COMMENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String?
+  avatarUrl    String?
+  userType     UserType @default(GAMER)
+  isAdmin      Boolean  @default(false)
+
+  // OAuth IDs
+  googleId String? @unique
+  twitchId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  featureRequests FeatureRequest[]
+  votes           Vote[]
+  comments        Comment[]
+  commentLikes    CommentLike[]
+  followers       Follow[]         @relation("Following")
+  following       Follow[]         @relation("Follower")
+  notifications   Notification[]
+  deviceTokens    DeviceToken[]
+  devGames        Game[]           @relation("DevUser")
+  refreshTokens   RefreshToken[]
+
+  @@index([email])
+  @@index([username])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Game {
+  id            String    @id @default(cuid())
+  externalId    String    @unique
+  slug          String    @unique
+  name          String
+  coverImageUrl String?
+  description   String?
+  releaseDate   DateTime?
+  platforms     String[]
+  genres        String[]
+  isVerified    Boolean   @default(false)
+
+  // Dev user who has access to manage this game
+  devUserId String?
+  devUser   User?   @relation("DevUser", fields: [devUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  featureRequests FeatureRequest[]
+  gameFollows     Follow[]
+
+  @@index([slug])
+  @@index([name])
+  @@index([externalId])
+}
+
+model FeatureRequest {
+  id          String        @id @default(cuid())
+  gameId      String
+  game        Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  type        RequestType
+  title       String
+  description String
+  voteCount   Int           @default(0)
+  status      RequestStatus @default(OPEN)
+
+  // Dev response
+  devResponse    String?
+  devRespondedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  votes    Vote[]
+  comments Comment[]
+
+  @@index([gameId])
+  @@index([authorId])
+  @@index([status])
+  @@index([voteCount])
+  @@index([createdAt])
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestId String
+  request   FeatureRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, requestId])
+  @@index([requestId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  requestId String
+  request   FeatureRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  content   String
+  likeCount Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  replies Comment[]     @relation("CommentReplies")
+  likes   CommentLike[]
+
+  @@index([requestId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@index([userId])
+}
+
+model Follow {
+  id         String     @id @default(cuid())
+  followerId String
+  follower   User       @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followType FollowType
+
+  // For USER follows
+  followingId String?
+  following   User?   @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  // For GAME follows
+  gameId String?
+  game   Game?   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([followerId, followType, followingId])
+  @@unique([followerId, followType, gameId])
+  @@index([followerId])
+  @@index([followingId])
+  @@index([gameId])
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  entityType EntityType
+  entityId   String
+  title      String
+  message    String
+  actionUrl  String?
+  isRead     Boolean          @default(false)
+  isPushed   Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([token])
+}

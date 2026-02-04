@@ -1,0 +1,37 @@
+export enum UserType {
+  GAMER = 'GAMER',
+  DEVELOPER = 'DEVELOPER',
+}
+
+export enum RequestType {
+  ADD_FEATURE = 'ADD_FEATURE',
+  REMOVE_FEATURE = 'REMOVE_FEATURE',
+}
+
+export enum RequestStatus {
+  OPEN = 'OPEN',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  IN_PROGRESS = 'IN_PROGRESS',
+  IMPLEMENTED = 'IMPLEMENTED',
+  DECLINED = 'DECLINED',
+}
+
+export enum FollowType {
+  USER = 'USER',
+  GAME = 'GAME',
+}
+
+export enum NotificationType {
+  FOLLOWED_USER_POST = 'FOLLOWED_USER_POST',
+  FOLLOWED_GAME_UPDATE = 'FOLLOWED_GAME_UPDATE',
+  REQUEST_STATUS_CHANGE = 'REQUEST_STATUS_CHANGE',
+  COMMENT_ON_REQUEST = 'COMMENT_ON_REQUEST',
+  VOTE_MILESTONE = 'VOTE_MILESTONE',
+}
+
+export enum EntityType {
+  USER = 'USER',
+  GAME = 'GAME',
+  REQUEST = 'REQUEST',
+  COMMENT = 'COMMENT',
+}
