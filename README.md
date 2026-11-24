@@ -266,6 +266,10 @@ lsof -i :3001  # or :3000
 kill -9 <PID>
 ```
 
+## Known limitations
+
+- **No refresh-token reuse detection.** Refresh tokens rotate on every use and are stored only as SHA-256 hashes, but a stolen token that is used *before* the real user refreshes is not detected. Reuse detection (revoking the whole session family when an old token reappears) is out of scope: it would also log out every tab when two tabs refresh at the same moment.
+
 ## License
 
 MIT
