@@ -17,8 +17,8 @@ pnpm run build
 
 # Database commands
 pnpm run db:generate   # Generate Prisma client
-pnpm run db:push       # Push schema to database (use for initial setup)
-pnpm run db:migrate    # Run migrations (use for production)
+pnpm run db:migrate    # Apply/create migrations (prisma migrate dev) - the normal path
+pnpm run db:push       # Push schema without a migration - throwaway prototyping only
 pnpm run db:seed       # Seed sample data
 pnpm run db:studio     # Open Prisma Studio GUI
 
@@ -60,7 +60,8 @@ Workspace libraries (`@game-review/shared`, `@game-review/database`, `@game-revi
 ### Database
 - PostgreSQL with Prisma ORM
 - Schema in `libs/database/prisma/schema.prisma`
-- Use `db:push` for development, `db:migrate` for production
+- Migrations live in `libs/database/prisma/migrations/`. Every schema change ships as a migration (`db:migrate`); production runs `prisma migrate deploy`. `db:push` is for throwaway prototyping only.
+- The Prisma CLI reads `libs/database/.env` (copy it from `libs/database/.env.example`), not the root `.env`.
 
 ### Authentication
 - Local auth with bcrypt password hashing

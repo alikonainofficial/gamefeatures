@@ -66,8 +66,9 @@ pnpm install
 ### 2. Environment Setup
 
 ```bash
-# Copy environment file
+# Copy environment files
 cp .env.example .env
+cp libs/database/.env.example libs/database/.env   # read by the Prisma CLI
 ```
 
 Edit `.env` with your configuration:
@@ -89,12 +90,16 @@ docker-compose up -d
 # Generate Prisma client
 pnpm run db:generate
 
-# Push schema to database
-pnpm run db:push
+# Apply migrations to the database
+pnpm run db:migrate
 
 # Seed with sample games and users
 pnpm run db:seed
 ```
+
+Schema changes go through migrations: edit `libs/database/prisma/schema.prisma`, then run `pnpm run db:migrate` and give the migration a name when prompted. Production applies them with `prisma migrate deploy`. `pnpm run db:push` is only for throwaway prototyping; it changes the database without recording a migration.
+
+If your local database was created with `db:push` before migrations existed, `db:migrate` will report drift and offer to reset it (this deletes local data; run `db:seed` afterwards).
 
 ### 5. Run Development Servers
 
