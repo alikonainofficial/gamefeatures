@@ -70,6 +70,9 @@ export default function RequestPage() {
     };
   }, [socket, id, subscribe, unsubscribe]);
   const { isAuthenticated } = useAuthStore();
+  // Refetch once the session is restored (or on login/logout) so per-user flags such as
+  // hasVoted / isFollowing / hasLiked reflect the signed-in user, not an anonymous visitor.
+  const viewerId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     async function fetchRequest() {
@@ -83,7 +86,7 @@ export default function RequestPage() {
       }
     }
     fetchRequest();
-  }, [id]);
+  }, [id, viewerId]);
 
   const handleVote = async () => {
     if (!isAuthenticated || isVoting || !request) return;

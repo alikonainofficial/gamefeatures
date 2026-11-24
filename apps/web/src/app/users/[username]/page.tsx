@@ -77,7 +77,7 @@ export default function UserProfilePage() {
       }
     }
     fetchProfile();
-  }, [username]);
+  }, [username, user?.id]);
 
   const handleFollow = async () => {
     if (!profile || !isAuthenticated || isFollowLoading) return;

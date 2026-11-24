@@ -32,10 +32,13 @@ export function CommentSection({ requestId }: CommentSectionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const { isAuthenticated } = useAuthStore();
+  // Refetch once the session is restored (or on login/logout) so per-user flags such as
+  // hasVoted / isFollowing / hasLiked reflect the signed-in user, not an anonymous visitor.
+  const viewerId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     fetchComments();
-  }, [requestId]);
+  }, [requestId, viewerId]);
 
   const fetchComments = async () => {
     try {

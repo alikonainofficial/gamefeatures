@@ -33,6 +33,9 @@ export default function GamePage() {
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { isAuthenticated } = useAuthStore();
+  // Refetch once the session is restored (or on login/logout) so per-user flags such as
+  // hasVoted / isFollowing / hasLiked reflect the signed-in user, not an anonymous visitor.
+  const viewerId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     async function fetchGame() {
@@ -47,7 +50,7 @@ export default function GamePage() {
       }
     }
     fetchGame();
-  }, [slug]);
+  }, [slug, viewerId]);
 
   const handleFollowToggle = async () => {
     if (!game || !isAuthenticated || isFollowLoading) return;
