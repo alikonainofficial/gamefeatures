@@ -12,6 +12,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalAuthGuard } from '../auth/guards/optional-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ListGamesQueryDto } from './dto/list-games-query.dto';
+import { Throttle } from '@nestjs/throttler';
+import { IMPORT_THROTTLE } from '../../common/throttle';
 import { SearchGamesDto } from './dto/search-games.dto';
 
 @ApiTags('games')
@@ -32,6 +34,7 @@ export class GamesController {
   }
 
   @Post('import/:externalId')
+  @Throttle(IMPORT_THROTTLE)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Import a game from RAWG' })

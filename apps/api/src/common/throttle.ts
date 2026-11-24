@@ -28,3 +28,29 @@ export const AUTH_THROTTLE = {
     ttl: () => positiveInt(process.env.AUTH_THROTTLE_TTL_MS, 60_000),
   },
 };
+
+/**
+ * Tracks a request by the user in its bearer token, falling back to the IP.
+ *
+ * Throttling runs as a global guard, before JwtAuthGuard has verified the token, so the token
+ * is only decoded here. That is safe for counting: JwtAuthGuard still rejects a forged token
+ * right after, and only a valid token (with its genuine `sub`) can reach the handler.
+ */
+export function userOrIpTracker(req: Record<string, any>): string {
+  const auth: unknown = req.headers?.authorization;
+  const token = typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (token) {
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+      if (typeof payload?.sub === 'string') return `user:${payload.sub}`;
+    } catch {
+      // Not a JWT: fall back to the IP.
+    }
+  }
+  return `ip:${req.ip}`;
+}
+
+/** RAWG imports: 10 per hour per user (F16). */
+export const IMPORT_THROTTLE = {
+  default: { limit: 10, ttl: 60 * 60 * 1000, getTracker: userOrIpTracker },
+};

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { isPrismaError } from '../../common/prisma/is-prisma-error';
 import { RawgAdapter, RawgGame } from './game-api/rawg.adapter';
 
 @Injectable()
@@ -39,19 +40,28 @@ export class GamesService {
       throw new NotFoundException('Game not found in RAWG');
     }
 
-    // Create game
-    return this.prisma.game.create({
-      data: {
-        externalId: String(rawgGame.id),
-        slug: rawgGame.slug,
-        name: rawgGame.name,
-        coverImageUrl: rawgGame.background_image,
-        description: rawgGame.description_raw || null,
-        releaseDate: rawgGame.released ? new Date(rawgGame.released) : null,
-        platforms: rawgGame.platforms?.map((p) => p.platform.name) || [],
-        genres: rawgGame.genres?.map((g) => g.name) || [],
-      },
-    });
+    try {
+      return await this.prisma.game.create({
+        data: {
+          externalId: String(rawgGame.id),
+          slug: rawgGame.slug,
+          name: rawgGame.name,
+          coverImageUrl: rawgGame.background_image,
+          description: rawgGame.description_raw || null,
+          releaseDate: rawgGame.released ? new Date(rawgGame.released) : null,
+          platforms: rawgGame.platforms?.map((p) => p.platform.name) || [],
+          genres: rawgGame.genres?.map((g) => g.name) || [],
+        },
+      });
+    } catch (error) {
+      // Two users imported the same game at once: return the row the other request created.
+      // Any other clash (e.g. a different game with the same slug) stays a 409 via the filter.
+      if (isPrismaError(error, 'P2002')) {
+        const winner = await this.prisma.game.findUnique({ where: { externalId } });
+        if (winner) return winner;
+      }
+      throw error;
+    }
   }
 
   async findAll(page = 1, limit = 20, search?: string) {
