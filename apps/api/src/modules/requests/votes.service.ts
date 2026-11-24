@@ -3,7 +3,7 @@ import Redis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import { NotificationsService } from '../notifications/notifications.service';
-import { VOTE_MILESTONES, REDIS_KEYS, HOT_SCORE_DECAY_HOURS } from '@game-review/shared';
+import { VOTE_MILESTONES, REDIS_KEYS } from '@game-review/shared';
 
 @Injectable()
 export class VotesService {
@@ -111,7 +111,6 @@ export class VotesService {
   }
 
   private calculateHotScore(voteCount: number, createdAt: Date): number {
-    const hoursSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
     // Reddit-like hot score algorithm
     const order = Math.log10(Math.max(Math.abs(voteCount), 1));
     const sign = voteCount > 0 ? 1 : voteCount < 0 ? -1 : 0;

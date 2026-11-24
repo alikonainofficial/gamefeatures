@@ -24,7 +24,7 @@
 - [x] 0.1 Get a clean local baseline (install, generate, build, run)
 - [x] 0.2 Fix the Next.js production build (`useSearchParams` without Suspense)
 - [x] 0.3 Commit an initial Prisma migration
-- [ ] 1.1 Add ESLint configs and non-fixing lint scripts
+- [x] 1.1 Add ESLint configs and non-fixing lint scripts
 - [ ] 1.2 Add `typecheck` scripts and a shared `configureApp()`
 - [ ] 1.3 API unit-test setup (Jest)
 - [ ] 1.4 API end-to-end test harness (real Postgres + Redis)

@@ -92,7 +92,7 @@ function GamesResults() {
     <>
       {search && (
         <p className="text-gray-600 mb-6">
-          Showing results for "<span className="font-medium">{search}</span>"
+          Showing results for &quot;<span className="font-medium">{search}</span>&quot;
         </p>
       )}
 
