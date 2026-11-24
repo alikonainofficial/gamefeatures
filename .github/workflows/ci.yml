@@ -77,6 +77,10 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # `node apps/api/dist/main.js` is the production entry point (start script, Dockerfile).
+      - name: Check API build output
+        run: test -f apps/api/dist/main.js
+
       - name: Unit tests
         run: pnpm test
 
