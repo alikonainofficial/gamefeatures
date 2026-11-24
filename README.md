@@ -1,5 +1,7 @@
 # GameFeatures - Feature Request Platform
 
+[![CI](https://github.com/alikonainofficial/gamefeatures/actions/workflows/ci.yml/badge.svg)](https://github.com/alikonainofficial/gamefeatures/actions/workflows/ci.yml)
+
 A platform where gamers post feature requests for games, vote on ideas, and game development teams can view and act on community feedback.
 
 ## Tech Stack

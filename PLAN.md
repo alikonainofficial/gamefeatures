@@ -28,7 +28,7 @@
 - [x] 1.2 Add `typecheck` scripts and a shared `configureApp()`
 - [x] 1.3 API unit-test setup (Jest)
 - [x] 1.4 API end-to-end test harness (real Postgres + Redis)
-- [ ] 1.5 GitHub Actions CI
+- [x] 1.5 GitHub Actions CI
 - [ ] 2.1 Fix query validation that rejects `sort`, `search` and `unread` (400s)
 - [ ] 2.2 Fix the web client never sending the access token, and add refresh-on-401
 - [ ] 2.3 Fix the Redis ranking index (missing requests, wrong "new" order)
