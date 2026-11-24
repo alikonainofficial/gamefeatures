@@ -75,3 +75,27 @@ export async function createRequest(
     .expect(201);
   return res.body;
 }
+
+/** Posts a comment (or a reply, with parentId) through the real HTTP endpoint. */
+export async function createComment(
+  t: TestApp,
+  author: TestUser,
+  requestId: string,
+  overrides: { content?: string; parentId?: string } = {},
+) {
+  const res = await t
+    .http()
+    .post(`/api/v1/requests/${requestId}/comments`)
+    .set('Authorization', `Bearer ${author.token}`)
+    .send({ content: `Comment ${next()}`, ...overrides })
+    .expect(201);
+  return res.body;
+}
+
+/** A user's notifications (newest first), optionally of one type. */
+export function notificationsOf(t: TestApp, userId: string, type?: string) {
+  return t.prisma.notification.findMany({
+    where: { userId, ...(type ? { type: type as never } : {}) },
+    orderBy: { createdAt: 'desc' },
+  });
+}

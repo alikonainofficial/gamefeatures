@@ -1,15 +1,33 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
   "rootDir": "..",
-  "testRegex": "test/.*\\.e2e-spec\\.ts$",
+  "testRegex": "(test/.*\\.e2e-spec|src/.*\\.spec)\\.ts$",
   "transform": {
     "^.+\\.ts$": "ts-jest"
   },
   "testEnvironment": "node",
   "globalSetup": "<rootDir>/test/global-setup.ts",
-  "setupFiles": ["<rootDir>/test/setup-env.ts"],
-  "setupFilesAfterEnv": ["<rootDir>/test/setup-after-env.ts"],
+  "setupFiles": [
+    "<rootDir>/test/setup-env.ts"
+  ],
+  "setupFilesAfterEnv": [
+    "<rootDir>/test/setup-after-env.ts"
+  ],
   "maxWorkers": 1,
-  "collectCoverageFrom": ["src/**/*.ts", "!src/main.ts", "!src/**/*.spec.ts"],
-  "coverageDirectory": "coverage"
+  "collectCoverageFrom": [
+    "src/modules/**/*.service.ts",
+    "src/modules/requests/ranking/**/*.ts",
+    "src/common/**/*.ts",
+    "!src/**/*.spec.ts"
+  ],
+  "coverageDirectory": "coverage",
+  "coverageThreshold": {
+    "global": {
+      "lines": 80
+    }
+  }
 }
