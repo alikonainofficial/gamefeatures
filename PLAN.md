@@ -27,7 +27,7 @@
 - [x] 1.1 Add ESLint configs and non-fixing lint scripts
 - [x] 1.2 Add `typecheck` scripts and a shared `configureApp()`
 - [x] 1.3 API unit-test setup (Jest)
-- [ ] 1.4 API end-to-end test harness (real Postgres + Redis)
+- [x] 1.4 API end-to-end test harness (real Postgres + Redis)
 - [ ] 1.5 GitHub Actions CI
 - [ ] 2.1 Fix query validation that rejects `sort`, `search` and `unread` (400s)
 - [ ] 2.2 Fix the web client never sending the access token, and add refresh-on-401
@@ -453,3 +453,6 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
   - F1: `GET /games/:slug/requests?sort=hot&page=1&limit=10` → 400 "property sort should not exist"; `GET /games?search=portal&limit=8` → 400 "property search should not exist"; `GET /me/notifications?unread=true` → 400 "property unread should not exist". Without the extra key the same requests → 200.
   - F2: after register, `GET /auth/me` without a header (what the web sends) → 401, with `Authorization: Bearer <token>` → 200. `apps/web/src/lib/api.ts:14` reads `localStorage['auth-storage']`, and nothing in `apps/web/src` writes it.
 - **2026-11-24, 1.3: both `calculateHotScore` copies now call `hot-score.ts`.** They were byte-for-byte the same formula, so pointing them at the extracted function was a pure refactor and avoids a third copy until 2.3. 2.3 still owns the dead `HOT_SCORE_DECAY_HOURS` constant (its unused import and the unused `hoursSinceCreation` were removed in 1.1 to make lint pass).
+- **2026-11-24, 1.4: `RedisModule` now quits its client on shutdown.** The shared ioredis client was never closed, which would keep Jest (and a stopping container) alive. It implements `OnApplicationShutdown`, so `app.close()` releases it; BullMQ and Prisma already close themselves. This is the "close all Redis/BullMQ connections" item, done in the app rather than in each test.
+- **2026-11-24, 1.4: harness details.** `test/.env.test` is loaded by a `setupFiles` script (before `AppModule` is imported) and by `globalSetup`, without overriding variables already set, so CI can override them. `prisma migrate deploy` creates `game_review_test` when it's missing. `reset.ts` and `globalSetup` refuse to run unless the database name ends in `_test`. The e2e transform only matches `.ts`, so ts-jest doesn't try to compile the libs' built `.js`. `apps/api/tsconfig.json` now includes `test/**/*`, so typecheck and lint cover the tests.
+- **2026-11-24, 1.4: pnpm 8 passes `--` through to Jest literally.** `pnpm --filter @game-review/api test:e2e -- --coverage` makes Jest treat `--coverage` as a test-path pattern and find no tests. Pass Jest flags without the `--` (`... test:e2e --coverage`); 1.5's CI step does that.
