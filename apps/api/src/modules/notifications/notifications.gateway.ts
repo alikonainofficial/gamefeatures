@@ -16,8 +16,12 @@ interface AuthenticatedSocket extends Socket {
   userId?: string;
 }
 
-/** `request:<cuid>`; Prisma cuids are 25 lowercase alphanumerics (allow some slack). */
-const REQUEST_ROOM = /^request:[a-z0-9]{20,32}$/;
+/**
+ * `request:<id>`. The prefix is what keeps clients out of private `user:<id>` rooms; the ID
+ * part allows letters, digits, `_` and `-` (cuids and the seed's readable IDs) but never `:`,
+ * so no other room name can be smuggled in. Joining a room for a nonexistent request is harmless.
+ */
+const REQUEST_ROOM = /^request:[A-Za-z0-9_-]{1,64}$/;
 
 /** Returns the requested room if a client may join it, otherwise null. */
 export function publicRoomFrom(data: unknown): string | null {

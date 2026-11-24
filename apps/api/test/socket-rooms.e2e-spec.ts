@@ -50,6 +50,8 @@ describe('WebSocket room subscriptions (e2e)', () => {
     ['a non-string room', { room: 42 }],
     ['an arbitrary room', { room: 'admins' }],
     ['a request room with a malformed id', { room: 'request:../../user:abc' }],
+    ['a request room smuggling another room', { room: 'request:abc:user:xyz' }],
+    ['an overlong request id', { room: `request:${'a'.repeat(65)}` }],
   ])('rejects %s', async (_, payload) => {
     const me = await createUser(t);
     const socket = await connectedSocket(t, me);
@@ -76,6 +78,17 @@ describe('WebSocket room subscriptions (e2e)', () => {
     await settle();
     expect(updates).toHaveLength(1);
   });
+
+  it.each([['a cuid', 'cmwu53p7i00h312nm3hp1jzud'], ['a seeded readable id', 'seed-req-10']])(
+    'accepts a request room for %s',
+    async (_, requestId) => {
+      const me = await createUser(t);
+      const socket = await connectedSocket(t, me);
+      expect(await socket.emitWithAck('subscribe', { room: `request:${requestId}` })).toEqual({
+        subscribed: `request:${requestId}`,
+      });
+    },
+  );
 
   it('disconnects a connection without a valid token', async () => {
     for (const token of [undefined, 'not-a-jwt']) {
