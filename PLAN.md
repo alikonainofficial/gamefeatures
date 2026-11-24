@@ -34,7 +34,7 @@
 - [x] 2.3 Fix the Redis ranking index (missing requests, wrong "new" order)
 - [x] 2.4 Map Prisma errors to HTTP codes (no more 500s for 404/409 cases)
 - [x] 2.5 Idempotent, race-safe votes, likes and follows
-- [ ] 2.6 Consistent username validation on profile update
+- [x] 2.6 Consistent username validation on profile update
 - [ ] 3.1 Stop leaking email, OAuth IDs and isAdmin on public profiles
 - [ ] 3.2 Restrict WebSocket room subscriptions
 - [ ] 3.3 Turn rate limiting on

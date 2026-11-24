@@ -37,6 +37,13 @@ export const WS_EVENTS = {
 // API paths
 export const API_PREFIX = '/api/v1';
 
+// Username constraints (register and profile update use the same rules)
+export const USERNAME_MIN_LENGTH = 3;
+export const USERNAME_MAX_LENGTH = 30;
+export const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
+export const USERNAME_RULES_MESSAGE =
+  'Username can only contain letters, numbers, and underscores';
+
 // Comment constraints
 export const MAX_COMMENT_LENGTH = 5000;
 export const MAX_COMMENT_DEPTH = 5;
