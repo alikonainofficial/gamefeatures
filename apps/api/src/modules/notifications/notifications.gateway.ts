@@ -16,6 +16,15 @@ interface AuthenticatedSocket extends Socket {
   userId?: string;
 }
 
+/** `request:<cuid>`; Prisma cuids are 25 lowercase alphanumerics (allow some slack). */
+const REQUEST_ROOM = /^request:[a-z0-9]{20,32}$/;
+
+/** Returns the requested room if a client may join it, otherwise null. */
+export function publicRoomFrom(data: unknown): string | null {
+  const room = (data as { room?: unknown } | null | undefined)?.room;
+  return typeof room === 'string' && REQUEST_ROOM.test(room) ? room : null;
+}
+
 @WebSocketGateway({
   cors: {
     origin: process.env.WEB_URL || 'http://localhost:3000',
@@ -78,22 +87,22 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     console.log(`Client disconnected: ${client.id}`);
   }
 
+  // Clients may only join public per-request rooms (live vote counts). The private
+  // `user:<id>` room is joined by the server in handleConnection and nowhere else.
   @SubscribeMessage(WS_EVENTS.subscribe)
-  handleSubscribe(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { room: string },
-  ) {
-    client.join(data.room);
-    return { subscribed: data.room };
+  handleSubscribe(@ConnectedSocket() client: AuthenticatedSocket, @MessageBody() data: unknown) {
+    const room = publicRoomFrom(data);
+    if (!room) return { error: 'Invalid room' };
+    client.join(room);
+    return { subscribed: room };
   }
 
   @SubscribeMessage(WS_EVENTS.unsubscribe)
-  handleUnsubscribe(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { room: string },
-  ) {
-    client.leave(data.room);
-    return { unsubscribed: data.room };
+  handleUnsubscribe(@ConnectedSocket() client: AuthenticatedSocket, @MessageBody() data: unknown) {
+    const room = publicRoomFrom(data);
+    if (!room) return { error: 'Invalid room' };
+    client.leave(room);
+    return { unsubscribed: room };
   }
 
   // Send to specific user

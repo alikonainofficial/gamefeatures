@@ -36,7 +36,7 @@
 - [x] 2.5 Idempotent, race-safe votes, likes and follows
 - [x] 2.6 Consistent username validation on profile update
 - [x] 3.1 Stop leaking email, OAuth IDs and isAdmin on public profiles
-- [ ] 3.2 Restrict WebSocket room subscriptions
+- [x] 3.2 Restrict WebSocket room subscriptions
 - [ ] 3.3 Turn rate limiting on
 - [ ] 3.4 Harden refresh tokens
 - [ ] 3.5 Harden OAuth (token in URL, unverified-email account linking)
