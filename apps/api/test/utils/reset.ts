@@ -1,10 +1,14 @@
 import { getQueueToken } from '@nestjs/bullmq';
+import { getStorageToken, ThrottlerStorageService } from '@nestjs/throttler';
 import { QUEUE_NAMES } from '@game-review/shared';
 import { Queue } from 'bullmq';
 import { assertTestDatabase } from './load-test-env';
 import { TestApp } from './create-test-app';
 
-/** Empties every table, the test Redis DB and the BullMQ queues. Call in beforeEach. */
+/**
+ * Empties every table, the test Redis DB, the BullMQ queues and the rate-limit counters
+ * (in-memory), so no test depends on what an earlier one did. Call in beforeEach.
+ */
 export async function resetState({ app, prisma, redis, rawg }: TestApp): Promise<void> {
   assertTestDatabase();
 
@@ -22,4 +26,9 @@ export async function resetState({ app, prisma, redis, rawg }: TestApp): Promise
 
   await redis.flushdb();
   rawg.clear();
+
+  const throttlerStorage = app.get<ThrottlerStorageService>(getStorageToken());
+  for (const key of Object.keys(throttlerStorage.storage)) {
+    delete throttlerStorage.storage[key];
+  }
 }

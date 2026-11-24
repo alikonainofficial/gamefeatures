@@ -37,7 +37,7 @@
 - [x] 2.6 Consistent username validation on profile update
 - [x] 3.1 Stop leaking email, OAuth IDs and isAdmin on public profiles
 - [x] 3.2 Restrict WebSocket room subscriptions
-- [ ] 3.3 Turn rate limiting on
+- [x] 3.3 Turn rate limiting on
 - [ ] 3.4 Harden refresh tokens
 - [ ] 3.5 Harden OAuth (token in URL, unverified-email account linking)
 - [ ] 3.6 Timeouts on outbound RAWG calls
@@ -463,3 +463,5 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
 - **2026-11-24, 2.5: test app now listens on a random port.** Ten parallel supertest calls against a non-listening server each opened their own listener and intermittently failed with `ECONNRESET`. `createTestApp()` calls `app.listen(0, '127.0.0.1')` (which also suits the socket tests in 3.2/4.2); three consecutive full runs were clean.
 - **2026-11-24, 2.5: Prisma no longer logs errors itself outside development.** It printed every handled duplicate (P2002) as `prisma:error`, which in production would log an error on every double-click. Unhandled Prisma errors still reach Nest's logger through `PrismaExceptionFilter`. Development keeps query/error/warn logging.
 - **2026-11-24, 3.1: where the selects live and who uses them.** `publicUserSelect`/`selfUserSelect` are in `modules/users/user.selects.ts`. `/auth/me` now calls `UsersService.findSelf()` (self select) instead of `AuthService.validateUser()`, which was removed (it had no other caller). The grep for other full-user responses found none: request/comment/follow responses already select `{ id, username, avatarUrl }`, the admin endpoints that include `email` are behind `AdminGuard`, and `comments.service` loads the full request author only to address a notification.
+- **2026-11-24, 3.3: implementation notes.** The auth limit is a per-request resolvable (`AUTH_THROTTLE` in `common/throttle.ts`, reading `AUTH_THROTTLE_LIMIT`/`AUTH_THROTTLE_TTL_MS`) so it stays configurable without a custom guard; invalid or empty values fall back to the defaults. `trust proxy` is set in `configureApp()` from `TRUST_PROXY_HOPS` (default 0), and a test proves a spoofed `X-Forwarded-For` can't reset the limit. `resetState()` now also clears the throttler's in-memory counters so specs don't depend on order. New variables are in both `.env.example` files.
+- **2026-11-24, 3.3: web client keeps the session on a throttled refresh.** `/auth/refresh` is now rate-limited, and the 2.2 client treated any failed refresh as a lost session. Now only a 401/403 from `/auth/refresh` calls `onAuthFailure()`; a 429, 5xx or network error just fails that request and the refresh cookie stays usable. Note for 6.7: if `TRUST_PROXY_HOPS` is wrong in production, every visitor would share the proxy's IP and its limits, so it must be verified as the plan says.

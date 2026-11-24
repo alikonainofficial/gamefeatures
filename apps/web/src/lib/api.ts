@@ -56,7 +56,8 @@ export class ApiClient {
   /**
    * Refreshes the access token, sharing one in-flight request between all callers. The
    * refresh token rotates on every use, so two parallel refreshes would invalidate each other.
-   * Resolves to null (after calling onAuthFailure once) when the session can't be refreshed.
+   * Resolves to null when the token can't be refreshed. Only a 401/403 (the session is gone)
+   * calls onAuthFailure, once; a 429, 5xx or network error leaves the session in place.
    */
   refreshAccessToken(): Promise<string | null> {
     const auth = this.auth;
@@ -66,13 +67,17 @@ export class ApiClient {
       this.refreshInFlight = auth
         .refresh()
         .then(
-          (token) => token,
-          () => null,
+          (token) => {
+            if (!token) auth.onAuthFailure();
+            return token || null;
+          },
+          (error) => {
+            if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+              auth.onAuthFailure();
+            }
+            return null;
+          },
         )
-        .then((token) => {
-          if (!token) auth.onAuthFailure();
-          return token;
-        })
         .finally(() => {
           this.refreshInFlight = null;
         });

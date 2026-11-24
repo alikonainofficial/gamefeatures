@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -9,6 +10,13 @@ import helmet from 'helmet';
  */
 export function configureApp(app: INestApplication): INestApplication {
   const configService = app.get(ConfigService);
+
+  // Behind proxies (Vercel -> Render), req.ip must be the client's IP, or rate limiting would
+  // throttle everyone sharing the proxy. Trust exactly TRUST_PROXY_HOPS hops (default: none).
+  (app as NestExpressApplication).set(
+    'trust proxy',
+    Number(configService.get('TRUST_PROXY_HOPS') ?? 0) || 0,
+  );
 
   // Security
   app.use(helmet());
