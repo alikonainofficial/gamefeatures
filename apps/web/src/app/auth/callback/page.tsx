@@ -1,11 +1,31 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { api } from '@/lib/api';
 
 export default function AuthCallbackPage() {
+  // useSearchParams() needs a Suspense boundary, or `next build` fails to prerender this page.
+  return (
+    <Suspense fallback={<SigningIn />}>
+      <AuthCallbackHandler />
+    </Suspense>
+  );
+}
+
+function SigningIn() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Signing you in...</p>
+      </div>
+    </div>
+  );
+}
+
+function AuthCallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setAccessToken, setUser } = useAuthStore();
@@ -33,12 +53,5 @@ export default function AuthCallbackPage() {
     handleCallback();
   }, [searchParams, setAccessToken, setUser, router]);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Signing you in...</p>
-      </div>
-    </div>
-  );
+  return <SigningIn />;
 }
