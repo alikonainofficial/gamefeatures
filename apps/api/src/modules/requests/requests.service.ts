@@ -9,6 +9,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import { GamesService } from '../games/games.service';
 import { VotesService } from './votes.service';
+import { hotScore } from './ranking/hot-score';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
@@ -265,7 +266,7 @@ export class RequestsService {
       this.redis.zadd(REDIS_KEYS.gameRequestsNew(gameId), createdAt.getTime(), requestId),
       this.redis.zadd(
         REDIS_KEYS.gameRequestsHot(gameId),
-        this.calculateHotScore(voteCount, createdAt),
+        hotScore(voteCount, createdAt),
         requestId,
       ),
     ]);
@@ -313,12 +314,5 @@ export class RequestsService {
       default:
         return [{ voteCount: 'desc' as const }, { createdAt: 'desc' as const }];
     }
-  }
-
-  private calculateHotScore(voteCount: number, createdAt: Date): number {
-    const order = Math.log10(Math.max(Math.abs(voteCount), 1));
-    const sign = voteCount > 0 ? 1 : voteCount < 0 ? -1 : 0;
-    const seconds = createdAt.getTime() / 1000 - 1134028003;
-    return sign * order + seconds / 45000;
   }
 }

@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import { NotificationsService } from '../notifications/notifications.service';
 import { VOTE_MILESTONES, REDIS_KEYS } from '@game-review/shared';
+import { hotScore } from './ranking/hot-score';
 
 @Injectable()
 export class VotesService {
@@ -106,16 +107,11 @@ export class VotesService {
     );
 
     // Update hot sorted set
-    const hotScore = this.calculateHotScore(voteCount, request.createdAt);
-    await this.redis.zadd(REDIS_KEYS.gameRequestsHot(gameId), hotScore, requestId);
-  }
-
-  private calculateHotScore(voteCount: number, createdAt: Date): number {
-    // Reddit-like hot score algorithm
-    const order = Math.log10(Math.max(Math.abs(voteCount), 1));
-    const sign = voteCount > 0 ? 1 : voteCount < 0 ? -1 : 0;
-    const seconds = createdAt.getTime() / 1000 - 1134028003; // Reddit epoch
-    return sign * order + seconds / 45000;
+    await this.redis.zadd(
+      REDIS_KEYS.gameRequestsHot(gameId),
+      hotScore(voteCount, request.createdAt),
+      requestId,
+    );
   }
 
   private async checkVoteMilestone(

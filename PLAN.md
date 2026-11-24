@@ -26,7 +26,7 @@
 - [x] 0.3 Commit an initial Prisma migration
 - [x] 1.1 Add ESLint configs and non-fixing lint scripts
 - [x] 1.2 Add `typecheck` scripts and a shared `configureApp()`
-- [ ] 1.3 API unit-test setup (Jest)
+- [x] 1.3 API unit-test setup (Jest)
 - [ ] 1.4 API end-to-end test harness (real Postgres + Redis)
 - [ ] 1.5 GitHub Actions CI
 - [ ] 2.1 Fix query validation that rejects `sort`, `search` and `unread` (400s)
@@ -452,3 +452,4 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
 - **2026-11-24, 0.1: F1 and F2 confirmed** (by sending the web app's exact requests to the dev API, since the dev server wasn't reachable from a browser in this workspace):
   - F1: `GET /games/:slug/requests?sort=hot&page=1&limit=10` → 400 "property sort should not exist"; `GET /games?search=portal&limit=8` → 400 "property search should not exist"; `GET /me/notifications?unread=true` → 400 "property unread should not exist". Without the extra key the same requests → 200.
   - F2: after register, `GET /auth/me` without a header (what the web sends) → 401, with `Authorization: Bearer <token>` → 200. `apps/web/src/lib/api.ts:14` reads `localStorage['auth-storage']`, and nothing in `apps/web/src` writes it.
+- **2026-11-24, 1.3: both `calculateHotScore` copies now call `hot-score.ts`.** They were byte-for-byte the same formula, so pointing them at the extracted function was a pure refactor and avoids a third copy until 2.3. 2.3 still owns the dead `HOT_SCORE_DECAY_HOURS` constant (its unused import and the unused `hoursSinceCreation` were removed in 1.1 to make lint pass).
