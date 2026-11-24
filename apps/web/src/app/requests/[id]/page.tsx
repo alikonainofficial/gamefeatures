@@ -69,10 +69,10 @@ export default function RequestPage() {
 
     setIsVoting(true);
     try {
-      const result = await api.post<{ voted: boolean; voteCount: number }>(
-        `/requests/${id}/upvote`,
-        {}
-      );
+      const path = `/requests/${id}/vote`;
+      const result = request.hasVoted
+        ? await api.delete<{ voted: boolean; voteCount: number }>(path)
+        : await api.put<{ voted: boolean; voteCount: number }>(path);
       setRequest((prev) =>
         prev ? { ...prev, hasVoted: result.voted, voteCount: result.voteCount } : prev
       );

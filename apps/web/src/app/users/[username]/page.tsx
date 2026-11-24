@@ -84,21 +84,22 @@ export default function UserProfilePage() {
 
     setIsFollowLoading(true);
     try {
-      const result = await api.post<{ following: boolean }>(
-        `/follows/users/${profile.id}`,
-        {}
-      );
+      const path = `/follows/users/${profile.id}`;
+      const result = isFollowing
+        ? await api.delete<{ following: boolean }>(path)
+        : await api.put<{ following: boolean }>(path);
+      // Only adjust the count if the state actually changed (both calls are idempotent).
+      if (result.following !== isFollowing) {
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                followersCount: prev.followersCount + (result.following ? 1 : -1),
+              }
+            : prev
+        );
+      }
       setIsFollowing(result.following);
-      setProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              followersCount: result.following
-                ? prev.followersCount + 1
-                : prev.followersCount - 1,
-            }
-          : prev
-      );
     } catch (error) {
       console.error('Failed to toggle follow:', error);
     } finally {

@@ -3,6 +3,8 @@ import {
   Get,
   Post,
   Patch,
+  Put,
+  Delete,
   Param,
   Body,
   Query,
@@ -59,15 +61,20 @@ export class RequestsController {
     return this.requestsService.findByGame(slug, query.sort, query.page, query.limit, userId);
   }
 
-  @Post('requests/:id/upvote')
+  @Put('requests/:id/vote')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Toggle upvote on a feature request' })
-  async toggleVote(
-    @Param('id') id: string,
-    @CurrentUser('id') userId: string,
-  ) {
-    return this.votesService.toggleVote(id, userId);
+  @ApiOperation({ summary: 'Upvote a feature request (idempotent)' })
+  async addVote(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.votesService.addVote(id, userId);
+  }
+
+  @Delete('requests/:id/vote')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove your upvote from a feature request (idempotent)' })
+  async removeVote(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.votesService.removeVote(id, userId);
   }
 
   @Patch('requests/:id/status')

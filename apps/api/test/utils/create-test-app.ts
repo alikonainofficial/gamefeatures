@@ -32,7 +32,9 @@ export async function createTestApp(): Promise<TestApp> {
 
   const app = moduleRef.createNestApplication({ logger: ['error', 'warn'] });
   configureApp(app);
-  await app.init();
+  // Listen on a random port: supertest reuses it (instead of opening a listener per request,
+  // which flakes under parallel requests), and socket.io clients can connect to it.
+  await app.listen(0, '127.0.0.1');
 
   return {
     app,

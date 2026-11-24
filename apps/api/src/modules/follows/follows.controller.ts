@@ -1,6 +1,7 @@
 import {
   Controller,
-  Post,
+  Put,
+  Delete,
   Get,
   Param,
   Query,
@@ -17,26 +18,36 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 export class FollowsController {
   constructor(private readonly followsService: FollowsService) {}
 
-  @Post('users/:userId')
+  @Put('users/:userId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Toggle follow a user' })
-  async toggleFollowUser(
-    @Param('userId') userId: string,
-    @CurrentUser('id') currentUserId: string,
-  ) {
-    return this.followsService.toggleFollowUser(currentUserId, userId);
+  @ApiOperation({ summary: 'Follow a user (idempotent)' })
+  async followUser(@Param('userId') userId: string, @CurrentUser('id') currentUserId: string) {
+    return this.followsService.followUser(currentUserId, userId);
   }
 
-  @Post('games/:gameId')
+  @Delete('users/:userId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Toggle follow a game' })
-  async toggleFollowGame(
-    @Param('gameId') gameId: string,
-    @CurrentUser('id') currentUserId: string,
-  ) {
-    return this.followsService.toggleFollowGame(currentUserId, gameId);
+  @ApiOperation({ summary: 'Unfollow a user (idempotent)' })
+  async unfollowUser(@Param('userId') userId: string, @CurrentUser('id') currentUserId: string) {
+    return this.followsService.unfollowUser(currentUserId, userId);
+  }
+
+  @Put('games/:gameId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Follow a game (idempotent)' })
+  async followGame(@Param('gameId') gameId: string, @CurrentUser('id') currentUserId: string) {
+    return this.followsService.followGame(currentUserId, gameId);
+  }
+
+  @Delete('games/:gameId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Unfollow a game (idempotent)' })
+  async unfollowGame(@Param('gameId') gameId: string, @CurrentUser('id') currentUserId: string) {
+    return this.followsService.unfollowGame(currentUserId, gameId);
   }
 
   @Get('users/:userId/followers')

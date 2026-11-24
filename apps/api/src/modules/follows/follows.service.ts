@@ -1,88 +1,64 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { FollowType } from '@game-review/database';
+import { FollowType, Prisma } from '@game-review/database';
+import { isPrismaError } from '../../common/prisma/is-prisma-error';
+
+export interface FollowResult {
+  following: boolean;
+}
 
 @Injectable()
 export class FollowsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async toggleFollowUser(
-    followerId: string,
-    followingId: string,
-  ): Promise<{ following: boolean }> {
+  /** Idempotent: following someone you already follow is a no-op. */
+  async followUser(followerId: string, followingId: string): Promise<FollowResult> {
+    this.assertNotSelf(followerId, followingId);
+    // A missing user fails the foreign key (P2003), which the Prisma filter maps to 404.
+    await this.createIgnoringDuplicate({ followerId, followingId, followType: FollowType.USER });
+    return { following: true };
+  }
+
+  /** Idempotent: unfollowing someone you don't follow is a no-op. */
+  async unfollowUser(followerId: string, followingId: string): Promise<FollowResult> {
+    this.assertNotSelf(followerId, followingId);
+    const { count } = await this.prisma.follow.deleteMany({
+      where: { followerId, followingId, followType: FollowType.USER },
+    });
+    if (count === 0 && !(await this.prisma.user.findUnique({ where: { id: followingId } }))) {
+      throw new NotFoundException('User not found');
+    }
+    return { following: false };
+  }
+
+  /** Idempotent: following a game you already follow is a no-op. */
+  async followGame(followerId: string, gameId: string): Promise<FollowResult> {
+    await this.createIgnoringDuplicate({ followerId, gameId, followType: FollowType.GAME });
+    return { following: true };
+  }
+
+  /** Idempotent: unfollowing a game you don't follow is a no-op. */
+  async unfollowGame(followerId: string, gameId: string): Promise<FollowResult> {
+    const { count } = await this.prisma.follow.deleteMany({
+      where: { followerId, gameId, followType: FollowType.GAME },
+    });
+    if (count === 0 && !(await this.prisma.game.findUnique({ where: { id: gameId } }))) {
+      throw new NotFoundException('Game not found');
+    }
+    return { following: false };
+  }
+
+  private assertNotSelf(followerId: string, followingId: string) {
     if (followerId === followingId) {
       throw new BadRequestException('Cannot follow yourself');
     }
-
-    // Verify user exists
-    const user = await this.prisma.user.findUnique({
-      where: { id: followingId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const existingFollow = await this.prisma.follow.findFirst({
-      where: {
-        followerId,
-        followingId,
-        followType: FollowType.USER,
-      },
-    });
-
-    if (existingFollow) {
-      await this.prisma.follow.delete({
-        where: { id: existingFollow.id },
-      });
-      return { following: false };
-    } else {
-      await this.prisma.follow.create({
-        data: {
-          followerId,
-          followingId,
-          followType: FollowType.USER,
-        },
-      });
-      return { following: true };
-    }
   }
 
-  async toggleFollowGame(
-    followerId: string,
-    gameId: string,
-  ): Promise<{ following: boolean }> {
-    // Verify game exists
-    const game = await this.prisma.game.findUnique({
-      where: { id: gameId },
-    });
-
-    if (!game) {
-      throw new NotFoundException('Game not found');
-    }
-
-    const existingFollow = await this.prisma.follow.findFirst({
-      where: {
-        followerId,
-        gameId,
-        followType: FollowType.GAME,
-      },
-    });
-
-    if (existingFollow) {
-      await this.prisma.follow.delete({
-        where: { id: existingFollow.id },
-      });
-      return { following: false };
-    } else {
-      await this.prisma.follow.create({
-        data: {
-          followerId,
-          gameId,
-          followType: FollowType.GAME,
-        },
-      });
-      return { following: true };
+  private async createIgnoringDuplicate(data: Prisma.FollowUncheckedCreateInput) {
+    try {
+      await this.prisma.follow.create({ data });
+    } catch (error) {
+      if (!isPrismaError(error, 'P2002')) throw error;
     }
   }
 

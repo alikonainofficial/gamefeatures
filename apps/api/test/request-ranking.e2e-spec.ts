@@ -59,9 +59,9 @@ describe('Request lists backed by the Redis ranking index (e2e)', () => {
 
     await t
       .http()
-      .post(`/api/v1/requests/${middle.id}/upvote`)
+      .put(`/api/v1/requests/${middle.id}/vote`)
       .set('Authorization', `Bearer ${voter.token}`)
-      .expect(201);
+      .expect(200);
 
     for (const sort of ['hot', 'top', 'new']) {
       const { titles, total } = await list(game.slug, sort);
@@ -90,15 +90,15 @@ describe('Request lists backed by the Redis ranking index (e2e)', () => {
     for (const voter of voters) {
       await t
         .http()
-        .post(`/api/v1/requests/${oldest.id}/upvote`)
+        .put(`/api/v1/requests/${oldest.id}/vote`)
         .set('Authorization', `Bearer ${voter.token}`)
-        .expect(201);
+        .expect(200);
     }
     await t
       .http()
-      .post(`/api/v1/requests/${middle.id}/upvote`)
+      .put(`/api/v1/requests/${middle.id}/vote`)
       .set('Authorization', `Bearer ${voters[0].token}`)
-      .expect(201);
+      .expect(200);
 
     expect((await list(game.slug, 'top')).titles).toEqual(['oldest', 'middle', 'newest']);
   });
@@ -114,9 +114,9 @@ describe('Request lists backed by the Redis ranking index (e2e)', () => {
 
     await t
       .http()
-      .post(`/api/v1/requests/${newest.id}/upvote`)
+      .put(`/api/v1/requests/${newest.id}/vote`)
       .set('Authorization', `Bearer ${voter.token}`)
-      .expect(201);
+      .expect(200);
 
     const { titles, total } = await list(game.slug, 'new');
     expect(total).toBe(3);

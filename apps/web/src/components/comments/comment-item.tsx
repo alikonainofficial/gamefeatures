@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Heart, Reply, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,7 +22,8 @@ interface Comment {
 
 interface CommentItemProps {
   comment: Comment;
-  onLike: (commentId: string) => void;
+  /** Resolves when the like/unlike request finishes; the button is disabled until then. */
+  onLike: (commentId: string, hasLiked: boolean) => Promise<void>;
   onReply: (commentId: string) => void;
   isAuthenticated: boolean;
   depth?: number;
@@ -36,6 +38,18 @@ export function CommentItem({
   isAuthenticated,
   depth = 0,
 }: CommentItemProps) {
+  const [isLiking, setIsLiking] = useState(false);
+
+  const handleLike = async () => {
+    if (isLiking) return;
+    setIsLiking(true);
+    try {
+      await onLike(comment.id, comment.hasLiked);
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
   return (
     <div className={`${depth > 0 ? 'ml-6 pl-4 border-l-2 border-gray-100' : ''}`}>
       <div className="flex gap-3">
@@ -70,8 +84,8 @@ export function CommentItem({
 
           <div className="flex items-center gap-4 mt-2">
             <button
-              onClick={() => onLike(comment.id)}
-              disabled={!isAuthenticated}
+              onClick={handleLike}
+              disabled={!isAuthenticated || isLiking}
               className={`flex items-center gap-1 text-sm transition ${
                 comment.hasLiked
                   ? 'text-red-500'

@@ -68,12 +68,12 @@ export function CommentSection({ requestId }: CommentSectionProps) {
     }
   };
 
-  const handleLike = async (commentId: string) => {
+  const handleLike = async (commentId: string, hasLiked: boolean) => {
     try {
-      const result = await api.post<{ liked: boolean; likeCount: number }>(
-        `/comments/${commentId}/like`,
-        {}
-      );
+      const path = `/comments/${commentId}/like`;
+      const result = hasLiked
+        ? await api.delete<{ liked: boolean; likeCount: number }>(path)
+        : await api.put<{ liked: boolean; likeCount: number }>(path);
       updateCommentLike(comments, commentId, result.liked, result.likeCount);
       setComments([...comments]);
     } catch (error) {
