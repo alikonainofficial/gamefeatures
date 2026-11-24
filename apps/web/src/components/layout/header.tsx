@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { useNotificationStore } from '@/lib/stores/notification-store';
 import { Bell, User, LogOut, Menu } from 'lucide-react';
 import { useState } from 'react';
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
 
   return (
     <header className="bg-white border-b border-gray-200">
@@ -32,8 +34,19 @@ export function Header() {
                 <Link
                   href="/notifications"
                   className="p-2 text-gray-600 hover:text-gray-900 relative"
+                  aria-label={
+                    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'
+                  }
                 >
                   <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span
+                      data-testid="unread-badge"
+                      className="absolute -top-0.5 -right-0.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
                 <div className="relative">
                   <button

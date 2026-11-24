@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { useNotificationStore } from '@/lib/stores/notification-store';
 import { Bell, Check, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -33,7 +34,10 @@ export default function NotificationsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
+  // Shared with the header badge, so marking as read here updates it immediately.
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
+  const decrementUnread = useNotificationStore((s) => s.decrementUnread);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -62,7 +66,7 @@ export default function NotificationsPage() {
       }
     }
     fetchNotifications();
-  }, [isAuthenticated, page]);
+  }, [isAuthenticated, page, setUnreadCount]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
@@ -70,7 +74,7 @@ export default function NotificationsPage() {
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
       );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      decrementUnread();
     } catch (error) {
       console.error('Failed to mark as read:', error);
     }
