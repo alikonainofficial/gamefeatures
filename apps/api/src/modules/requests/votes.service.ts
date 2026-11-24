@@ -1,16 +1,14 @@
-import { Injectable, Inject } from '@nestjs/common';
-import Redis from 'ioredis';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { REDIS_CLIENT } from '../../redis/redis.module';
 import { NotificationsService } from '../notifications/notifications.service';
-import { VOTE_MILESTONES, REDIS_KEYS } from '@game-review/shared';
-import { hotScore } from './ranking/hot-score';
+import { VOTE_MILESTONES } from '@game-review/shared';
+import { RequestRankingService } from './ranking/request-ranking.service';
 
 @Injectable()
 export class VotesService {
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    private readonly ranking: RequestRankingService,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -35,11 +33,10 @@ export class VotesService {
 
       const request = await this.prisma.featureRequest.findUnique({
         where: { id: requestId },
-        select: { voteCount: true, gameId: true },
+        select: { id: true, voteCount: true, gameId: true, createdAt: true },
       });
 
-      // Update Redis cache
-      await this.updateRedisCache(requestId, request!.gameId, request!.voteCount);
+      await this.ranking.upsert(request!);
 
       return { voted: false, voteCount: request!.voteCount };
     } else {
@@ -58,8 +55,7 @@ export class VotesService {
         }),
       ]);
 
-      // Update Redis cache
-      await this.updateRedisCache(requestId, request.gameId, request.voteCount);
+      await this.ranking.upsert(request);
 
       // Check for milestone notifications
       await this.checkVoteMilestone(request, request.voteCount);
@@ -86,32 +82,6 @@ export class VotesService {
       select: { requestId: true },
     });
     return new Set(votes.map((v) => v.requestId));
-  }
-
-  private async updateRedisCache(requestId: string, gameId: string, voteCount: number) {
-    const request = await this.prisma.featureRequest.findUnique({
-      where: { id: requestId },
-      select: { createdAt: true },
-    });
-
-    if (!request) return;
-
-    // Update top sorted set
-    await this.redis.zadd(REDIS_KEYS.gameRequestsTop(gameId), voteCount, requestId);
-
-    // Update new sorted set (score is timestamp)
-    await this.redis.zadd(
-      REDIS_KEYS.gameRequestsNew(gameId),
-      request.createdAt.getTime(),
-      requestId,
-    );
-
-    // Update hot sorted set
-    await this.redis.zadd(
-      REDIS_KEYS.gameRequestsHot(gameId),
-      hotScore(voteCount, request.createdAt),
-      requestId,
-    );
   }
 
   private async checkVoteMilestone(
