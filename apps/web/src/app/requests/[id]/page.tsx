@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { useSocket } from '@/hooks/use-socket';
+import { WS_EVENTS } from '@game-review/shared';
 import { CommentSection } from '@/components/comments/comment-section';
 import { ChevronUp, ArrowLeft, User, Clock, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -48,6 +50,25 @@ export default function RequestPage() {
   const [request, setRequest] = useState<FeatureRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
+  const { socket, subscribe, unsubscribe } = useSocket();
+
+  // Live vote count from other viewers. The socket needs a signed-in user; anonymous
+  // visitors just see the count from page load.
+  useEffect(() => {
+    if (!socket || !id) return;
+    const room = `request:${id}`;
+    const onVoteUpdate = (update: { requestId: string; voteCount: number }) => {
+      if (update.requestId !== id) return;
+      setRequest((prev) => (prev ? { ...prev, voteCount: update.voteCount } : prev));
+    };
+
+    socket.on(WS_EVENTS.voteUpdate, onVoteUpdate);
+    subscribe(room);
+    return () => {
+      socket.off(WS_EVENTS.voteUpdate, onVoteUpdate);
+      unsubscribe(room);
+    };
+  }, [socket, id, subscribe, unsubscribe]);
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {

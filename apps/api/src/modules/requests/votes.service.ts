@@ -3,6 +3,7 @@ import { Prisma } from '@game-review/database';
 import { PrismaService } from '../../prisma/prisma.service';
 import { isPrismaError } from '../../common/prisma/is-prisma-error';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { VOTE_MILESTONES } from '@game-review/shared';
 import { RequestRankingService } from './ranking/request-ranking.service';
 
@@ -28,6 +29,7 @@ export class VotesService {
     private readonly prisma: PrismaService,
     private readonly ranking: RequestRankingService,
     private readonly notificationsService: NotificationsService,
+    private readonly gateway: NotificationsGateway,
   ) {}
 
   /** Idempotent: voting again is a no-op that returns the current count. */
@@ -54,6 +56,8 @@ export class VotesService {
 
     await this.ranking.upsert(request);
     if (created) {
+      // Live count for everyone viewing the request (only when it actually changed).
+      this.gateway.sendVoteUpdate(request.id, request.voteCount);
       await this.checkVoteMilestone(request, request.voteCount);
     }
     return { voted: true, voteCount: request.voteCount };
@@ -61,15 +65,22 @@ export class VotesService {
 
   /** Idempotent: removing a vote that isn't there returns the current count. */
   async removeVote(requestId: string, userId: string): Promise<VoteResult> {
-    const request = await this.prisma.$transaction(async (tx) => {
+    const { request, removed } = await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.vote.deleteMany({ where: { userId, requestId } });
-      return count === 1
-        ? tx.featureRequest.update({
-            where: { id: requestId },
-            data: { voteCount: { decrement: 1 } },
-            select: VOTED_REQUEST_SELECT,
-          })
-        : tx.featureRequest.findUnique({ where: { id: requestId }, select: VOTED_REQUEST_SELECT });
+      return {
+        removed: count === 1,
+        request:
+          count === 1
+            ? await tx.featureRequest.update({
+                where: { id: requestId },
+                data: { voteCount: { decrement: 1 } },
+                select: VOTED_REQUEST_SELECT,
+              })
+            : await tx.featureRequest.findUnique({
+                where: { id: requestId },
+                select: VOTED_REQUEST_SELECT,
+              }),
+      };
     });
 
     if (!request) {
@@ -77,6 +88,9 @@ export class VotesService {
     }
 
     await this.ranking.upsert(request);
+    if (removed) {
+      this.gateway.sendVoteUpdate(request.id, request.voteCount);
+    }
     return { voted: false, voteCount: request.voteCount };
   }
 

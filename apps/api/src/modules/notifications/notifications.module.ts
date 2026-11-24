@@ -30,6 +30,6 @@ import { QUEUE_NAMES } from '@game-review/shared';
     NotificationsGateway,
     FcmService,
   ],
-  exports: [NotificationsService],
+  exports: [NotificationsService, NotificationsGateway],
 })
 export class NotificationsModule {}
