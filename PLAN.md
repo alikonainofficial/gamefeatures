@@ -21,7 +21,7 @@
 
 ## Progress
 
-- [ ] 0.1 Get a clean local baseline (install, generate, build, run)
+- [x] 0.1 Get a clean local baseline (install, generate, build, run)
 - [ ] 0.2 Fix the Next.js production build (`useSearchParams` without Suspense)
 - [ ] 0.3 Commit an initial Prisma migration
 - [ ] 1.1 Add ESLint configs and non-fixing lint scripts
@@ -444,3 +444,11 @@ Claude Code prepares and checks; **the user** does the account and secret steps.
 ## Deviations log
 
 _Add an entry whenever reality differs from this plan: date, step, what changed, why._
+
+- **2026-11-24, 0.1: no build errors to fix.** With the Prisma client generated, `libs/*` and `apps/api` compiled cleanly (no implicit-`any` errors), so this step's commit only adds the env example below and ticks the box. The web build fails only on F3 (`/auth/callback`, `/games`), as expected.
+- **2026-11-24, 0.1: Postgres/Redis ran natively, not via Docker.** The session's workspace got `429 Too Many Requests` from Docker Hub on anonymous pulls, so Postgres 16 and Redis 7 ran as local processes on the same ports and credentials as `docker-compose.yml`. Nothing in the repo depends on this. CI (1.5) uses service containers as planned.
+- **2026-11-24, 0.1: added `libs/database/.env.example`.** The Prisma CLI in `libs/database` reads `libs/database/.env` (already git-ignored), not the root `.env`, so `db:push` failed with "Environment variable not found: DATABASE_URL" until it was created. The example documents it; README setup gets the extra `cp` in 7.1.
+- **2026-11-24, 0.1: local Node was 22, not 20.** The workspace has Node 22; everything built and ran. CI pins Node 20 (1.5).
+- **2026-11-24, 0.1: F1 and F2 confirmed** (by sending the web app's exact requests to the dev API, since the dev server wasn't reachable from a browser in this workspace):
+  - F1: `GET /games/:slug/requests?sort=hot&page=1&limit=10` → 400 "property sort should not exist"; `GET /games?search=portal&limit=8` → 400 "property search should not exist"; `GET /me/notifications?unread=true` → 400 "property unread should not exist". Without the extra key the same requests → 200.
+  - F2: after register, `GET /auth/me` without a header (what the web sends) → 401, with `Authorization: Bearer <token>` → 200. `apps/web/src/lib/api.ts:14` reads `localStorage['auth-storage']`, and nothing in `apps/web/src` writes it.
