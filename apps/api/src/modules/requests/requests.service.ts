@@ -13,10 +13,11 @@ import { hotScore } from './ranking/hot-score';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
+import { RequestSort } from './dto/list-requests-query.dto';
 import { RequestStatus, UserType } from '@game-review/database';
 import { REDIS_KEYS } from '@game-review/shared';
 
-type SortOption = 'hot' | 'top' | 'new';
+type SortOption = RequestSort;
 
 @Injectable()
 export class RequestsService {

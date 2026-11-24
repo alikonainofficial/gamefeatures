@@ -12,7 +12,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto';
 import { RegisterDeviceTokenDto } from './dto/register-device-token.dto';
 
 @ApiTags('notifications')
@@ -26,14 +26,13 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Get user notifications' })
   async getNotifications(
     @CurrentUser('id') userId: string,
-    @Query() pagination: PaginationDto,
-    @Query('unread') unread?: string,
+    @Query() query: ListNotificationsQueryDto,
   ) {
     return this.notificationsService.getUserNotifications(
       userId,
-      pagination.page,
-      pagination.limit,
-      unread === 'true',
+      query.page,
+      query.limit,
+      query.unread === true,
     );
   }
 

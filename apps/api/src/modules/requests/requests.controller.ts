@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RequestsService } from './requests.service';
 import { VotesService } from './votes.service';
 import { CreateRequestDto } from './dto/create-request.dto';
@@ -16,7 +16,7 @@ import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalAuthGuard } from '../auth/guards/optional-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { ListRequestsQueryDto } from './dto/list-requests-query.dto';
 import { UserType } from '@game-review/database';
 
 @ApiTags('requests')
@@ -51,14 +51,12 @@ export class RequestsController {
   @Get('games/:slug/requests')
   @UseGuards(OptionalAuthGuard)
   @ApiOperation({ summary: 'Get feature requests for a game' })
-  @ApiQuery({ name: 'sort', enum: ['hot', 'top', 'new'], required: false })
   async findByGame(
     @Param('slug') slug: string,
-    @Query('sort') sort: 'hot' | 'top' | 'new' = 'hot',
-    @Query() pagination: PaginationDto,
+    @Query() query: ListRequestsQueryDto,
     @CurrentUser('id') userId?: string,
   ) {
-    return this.requestsService.findByGame(slug, sort, pagination.page, pagination.limit, userId);
+    return this.requestsService.findByGame(slug, query.sort, query.page, query.limit, userId);
   }
 
   @Post('requests/:id/upvote')
