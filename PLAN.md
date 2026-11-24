@@ -35,7 +35,7 @@
 - [x] 2.4 Map Prisma errors to HTTP codes (no more 500s for 404/409 cases)
 - [x] 2.5 Idempotent, race-safe votes, likes and follows
 - [x] 2.6 Consistent username validation on profile update
-- [ ] 3.1 Stop leaking email, OAuth IDs and isAdmin on public profiles
+- [x] 3.1 Stop leaking email, OAuth IDs and isAdmin on public profiles
 - [ ] 3.2 Restrict WebSocket room subscriptions
 - [ ] 3.3 Turn rate limiting on
 - [ ] 3.4 Harden refresh tokens
@@ -462,3 +462,4 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
 - **2026-11-24, 2.5: the old POST toggles were removed, not kept as deprecated wrappers.** After the web change nothing calls `POST /requests/:id/upvote`, `POST /comments/:id/like` or `POST /follows/...`, and a toggle can't be made correct under concurrency, so keeping it would keep the bug reachable. The 2.3 ranking specs now vote with `PUT`. Verified in headless Chrome against the built apps: vote/unvote on a card (PUT 200 → count 1, DELETE 200 → 0), follow/unfollow a game, comment then like/unlike (count 1 → 0); buttons are disabled while their request is in flight.
 - **2026-11-24, 2.5: test app now listens on a random port.** Ten parallel supertest calls against a non-listening server each opened their own listener and intermittently failed with `ECONNRESET`. `createTestApp()` calls `app.listen(0, '127.0.0.1')` (which also suits the socket tests in 3.2/4.2); three consecutive full runs were clean.
 - **2026-11-24, 2.5: Prisma no longer logs errors itself outside development.** It printed every handled duplicate (P2002) as `prisma:error`, which in production would log an error on every double-click. Unhandled Prisma errors still reach Nest's logger through `PrismaExceptionFilter`. Development keeps query/error/warn logging.
+- **2026-11-24, 3.1: where the selects live and who uses them.** `publicUserSelect`/`selfUserSelect` are in `modules/users/user.selects.ts`. `/auth/me` now calls `UsersService.findSelf()` (self select) instead of `AuthService.validateUser()`, which was removed (it had no other caller). The grep for other full-user responses found none: request/comment/follow responses already select `{ id, username, avatarUrl }`, the admin endpoints that include `email` are behind `AdminGuard`, and `comments.service` loads the full request author only to address a notification.

@@ -223,9 +223,4 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async validateUser(userId: string) {
-    return this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-  }
 }
