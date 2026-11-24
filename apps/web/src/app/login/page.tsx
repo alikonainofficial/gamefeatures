@@ -1,9 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/stores/auth-store';
+
+/** Messages for `/login?error=...`, set by the API's OAuth callback. */
+const OAUTH_ERRORS: Record<string, string> = {
+  account_exists:
+    'An account with this email already exists. Please sign in with your email and password.',
+  email_required:
+    'We could not get an email address from that provider. Please sign up with email and password instead.',
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,6 +20,15 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuthStore();
   const router = useRouter();
+
+  // Read the OAuth error from the query string. (Reading window.location in an effect avoids
+  // useSearchParams, which would need a Suspense boundary for `next build`.)
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('error');
+    if (code) {
+      setError(OAUTH_ERRORS[code] ?? 'Sign-in failed. Please try again.');
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

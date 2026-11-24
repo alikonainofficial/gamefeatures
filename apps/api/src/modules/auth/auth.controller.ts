@@ -13,7 +13,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from '../../common/throttle';
 import { Response, Request } from 'express';
-import { AuthService } from './auth.service';
+import { AuthService, OAuthLoginResult } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -98,11 +98,8 @@ export class AuthController {
   @Get('oauth/google/callback')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback' })
-  async googleAuthCallback(@Req() req: any, @Res() res: Response) {
-    const tokens = req.user;
-    this.setRefreshTokenCookie(res, tokens.refreshToken);
-    const webUrl = this.configService.get('WEB_URL') || 'http://localhost:3000';
-    res.redirect(`${webUrl}/auth/callback?token=${tokens.accessToken}`);
+  async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
+    this.finishOAuth(req.user as OAuthLoginResult, res);
   }
 
   @Get('oauth/twitch')
@@ -115,11 +112,23 @@ export class AuthController {
   @Get('oauth/twitch/callback')
   @UseGuards(TwitchAuthGuard)
   @ApiOperation({ summary: 'Twitch OAuth callback' })
-  async twitchAuthCallback(@Req() req: any, @Res() res: Response) {
-    const tokens = req.user;
-    this.setRefreshTokenCookie(res, tokens.refreshToken);
+  async twitchAuthCallback(@Req() req: Request, @Res() res: Response) {
+    this.finishOAuth(req.user as OAuthLoginResult, res);
+  }
+
+  /**
+   * Ends an OAuth login. The access token goes in the URL *fragment*: browsers never send it
+   * to a server, so it stays out of access logs, proxies and Referer headers. The callback
+   * page reads it and clears it from history.
+   */
+  private finishOAuth(result: OAuthLoginResult, res: Response) {
     const webUrl = this.configService.get('WEB_URL') || 'http://localhost:3000';
-    res.redirect(`${webUrl}/auth/callback?token=${tokens.accessToken}`);
+    if ('error' in result) {
+      res.redirect(`${webUrl}/login?error=${result.error}`);
+      return;
+    }
+    this.setRefreshTokenCookie(res, result.tokens.refreshToken);
+    res.redirect(`${webUrl}/auth/callback#token=${encodeURIComponent(result.tokens.accessToken)}`);
   }
 
   private setRefreshTokenCookie(res: Response, token: string) {
