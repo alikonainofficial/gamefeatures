@@ -115,12 +115,16 @@ pnpm run dev
 - **API**: http://localhost:3001
 - **API Docs (Swagger)**: http://localhost:3001/docs
 
-## Default Users (after seeding)
+## Demo accounts (after seeding)
 
-| Email | Password | Role |
-|-------|----------|------|
-| admin@gamereview.com | admin123 | Admin |
-| user@example.com | password123 | User |
+`pnpm db:seed` creates two demo accounts whose password is `SEED_DEMO_PASSWORD` (default `try-the-demo`, intentionally public):
+
+| Username | Email | Role |
+|----------|-------|------|
+| demo_gamer | demo_gamer@demo.gamefeatures.dev | Gamer |
+| demo_dev | demo_dev@demo.gamefeatures.dev | Developer for Portal 2 |
+
+No admin is created by default. Set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` (at least 16 characters in production) to create one. The seed is idempotent: run it as often as you like.
 
 ## Features
 
