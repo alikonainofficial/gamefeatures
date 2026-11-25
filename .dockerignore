@@ -1,0 +1,25 @@
+# Keep the Docker build context small and free of secrets and host build output.
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/.turbo
+**/*.tsbuildinfo
+.pnpm-store
+.git
+.github
+.claude
+.vercel
+
+# Never send env files (secrets) to the build
+**/.env
+**/.env.*
+!**/.env.example
+apps/api/test/.env.test
+
+# Not needed in the image
+**/*.log
+**/.DS_Store
+.idea
+.vscode
+docs

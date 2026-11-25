@@ -101,3 +101,59 @@ jobs:
           path: apps/api/coverage/
           if-no-files-found: ignore
           retention-days: 14
+
+  docker:
+    name: Build and boot the API image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: game_review_image
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build image
+        run: docker build -f apps/api/Dockerfile -t gamefeatures-api .
+
+      # The container migrates the empty database on start, then serves the API; this proves
+      # the image (what Render runs) works, not just the source.
+      - name: Boot image and check health
+        run: |
+          URL=postgresql://postgres:postgres@localhost:5432/game_review_image?schema=public
+          docker run -d --name api --network host \
+            -e PORT=3001 -e DATABASE_URL="$URL" -e DIRECT_URL="$URL" \
+            -e REDIS_URL=redis://localhost:6379 \
+            -e JWT_SECRET=ci-only-jwt-secret -e JWT_REFRESH_SECRET=ci-only-refresh-secret \
+            gamefeatures-api
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3001/api/v1/health; then echo; break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:3001/api/v1/health
+          curl -fsS -o /dev/null http://localhost:3001/docs
+
+      - name: Container logs
+        if: ${{ always() }}
+        run: docker logs api || true
