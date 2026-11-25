@@ -1,10 +1,15 @@
 generator client {
   provider = "prisma-client-js"
+  // "native" for local machines and CI; "debian-openssl-3.0.x" for the node:20-slim Docker image.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime connections. On Neon this is the pooled (PgBouncer) URL.
+  url       = env("DATABASE_URL")
+  // Migrations (prisma migrate) need a direct, unpooled connection. Locally it equals DATABASE_URL.
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserType {

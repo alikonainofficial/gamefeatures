@@ -7,6 +7,7 @@ import {
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
+import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -40,6 +41,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   @WebSocketServer()
   server: Server;
 
+  private readonly logger = new Logger(NotificationsGateway.name);
   private userSockets = new Map<string, Set<string>>(); // userId -> socketIds
 
   constructor(
@@ -72,7 +74,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       // Join user-specific room
       client.join(`user:${userId}`);
 
-      console.log(`Client connected: ${client.id} (user: ${client.userId})`);
+      this.logger.log(`Client connected: ${client.id} (user: ${client.userId})`);
     } catch (error) {
       client.disconnect();
     }
@@ -88,7 +90,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
         }
       }
     }
-    console.log(`Client disconnected: ${client.id}`);
+    this.logger.log(`Client disconnected: ${client.id}`);
   }
 
   // Clients may only join public per-request rooms (live vote counts). The private

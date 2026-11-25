@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as admin from 'firebase-admin';
 
@@ -10,6 +10,7 @@ interface PushMessage {
 
 @Injectable()
 export class FcmService implements OnModuleInit {
+  private readonly logger = new Logger(FcmService.name);
   private initialized = false;
 
   constructor(private readonly configService: ConfigService) {}
@@ -29,12 +30,12 @@ export class FcmService implements OnModuleInit {
           }),
         });
         this.initialized = true;
-        console.log('Firebase Admin initialized');
+        this.logger.log('Firebase Admin initialized');
       } catch (error) {
-        console.error('Failed to initialize Firebase Admin:', error);
+        this.logger.error('Failed to initialize Firebase Admin', (error as Error)?.stack);
       }
     } else {
-      console.log('Firebase credentials not configured, push notifications disabled');
+      this.logger.log('Firebase credentials not configured, push notifications disabled');
     }
   }
 
@@ -58,11 +59,11 @@ export class FcmService implements OnModuleInit {
         },
       });
 
-      console.log(`Push sent: ${response.successCount} success, ${response.failureCount} failed`);
+      this.logger.log(`Push sent: ${response.successCount} success, ${response.failureCount} failed`);
 
       // TODO: Handle failed tokens (remove invalid ones from database)
     } catch (error) {
-      console.error('Failed to send push notification:', error);
+      this.logger.error('Failed to send push notification', (error as Error)?.stack);
     }
   }
 
@@ -81,7 +82,7 @@ export class FcmService implements OnModuleInit {
         data: message.data,
       });
     } catch (error) {
-      console.error('Failed to send topic notification:', error);
+      this.logger.error('Failed to send topic notification', (error as Error)?.stack);
     }
   }
 }

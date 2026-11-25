@@ -18,13 +18,18 @@ export function loadTestEnv(): void {
   }
 }
 
-/** Refuse to truncate anything that isn't clearly a test database. */
+/**
+ * Refuse to migrate or truncate anything that isn't clearly a test database. Both URLs are
+ * checked: the app and reset.ts use DATABASE_URL, and `prisma migrate deploy` uses DIRECT_URL.
+ */
 export function assertTestDatabase(): void {
-  const url = process.env.DATABASE_URL ?? '';
-  const dbName = new URL(url).pathname.replace(/^\//, '');
-  if (!dbName.endsWith('_test')) {
-    throw new Error(
-      `Refusing to run e2e tests against "${dbName}": the database name must end in "_test".`,
-    );
+  for (const key of ['DATABASE_URL', 'DIRECT_URL']) {
+    const url = process.env[key] ?? '';
+    const dbName = url ? new URL(url).pathname.replace(/^\//, '') : '(unset)';
+    if (!dbName.endsWith('_test')) {
+      throw new Error(
+        `Refusing to run e2e tests with ${key} pointing at "${dbName}": the database name must end in "_test".`,
+      );
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
@@ -9,6 +10,10 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   configureApp(app);
+
+  // On SIGTERM (a Render deploy or restart), close HTTP, sockets, Prisma, Redis and BullMQ
+  // cleanly through the modules' shutdown hooks instead of dropping connections mid-request.
+  app.enableShutdownHooks();
 
   // Swagger documentation
   const config = new DocumentBuilder()
@@ -23,7 +28,8 @@ async function bootstrap() {
   const port = configService.get('PORT') || 3001;
   await app.listen(port);
 
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger docs: http://localhost:${port}/docs`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`Application is running on port ${port}`);
+  logger.log(`Swagger docs: /docs`);
 }
 bootstrap();

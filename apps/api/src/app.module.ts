@@ -13,6 +13,7 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { FollowsModule } from './modules/follows/follows.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { HealthModule } from './modules/health/health.module';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { defaultThrottlers } from './common/throttle';
 
@@ -55,6 +56,7 @@ import { defaultThrottlers } from './common/throttle';
     FollowsModule,
     NotificationsModule,
     AdminModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: PrismaExceptionFilter },
