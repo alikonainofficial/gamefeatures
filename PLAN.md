@@ -59,7 +59,9 @@
 
 ## Handoff notes (read before continuing)
 
-Written at the end of the first session (2026-11-24). **Phases 0–5 are done**, pushed to `improvement-plan`, and CI is green on the last commit (`144eea2`). **Next: step 6.1.** Work through 6.1–6.6, then **stop before 6.7** (🧑 MANUAL: the user creates accounts and enters secrets), then do 7.1 after 6.7.
+Written at the end of the first session (2026-11-24); updated at the end of the second (2026-11-25). **Phases 0–5 and steps 6.1–6.6 are done**, pushed to `improvement-plan`, and CI is green on `35ddecf` (two jobs: the original checks, plus `docker`, which builds the API image, boots it against an empty DB, seeds it and runs `pnpm smoke`). **Next: step 6.7 (🧑 MANUAL)**: the user creates the Neon/Render/Vercel accounts and enters secrets by following `docs/DEPLOY.md`; Claude Code may only help and check. Then 7.1.
+
+**Second-session notes:** Docker worked in that workspace (`dockerd` had to be started by hand; `docker compose up -d` then pulled fine). `docker build` there needed `--build-arg NODE_IMAGE=<node:20-slim + the proxy CA>` because the egress proxy re-signs TLS; on a normal machine and in CI the default `node:20-slim` works. Test counts now: 39 API unit, 23 web, 184 in the e2e coverage run (96.3% lines). For 7.1, the README env table also needs `LOG_CLIENT_IP`, `API_ORIGIN`, `NEXT_PUBLIC_SOCKET_URL`, `NEXT_PUBLIC_DEMO_MODE`, `NEXT_PUBLIC_DEMO_PASSWORD`, `NEXT_PUBLIC_OAUTH_PROVIDERS`, and should link `docs/DEPLOY.md`; CLAUDE.md should mention `pnpm smoke`, the Docker image and `render.yaml`.
 
 ### Environment and local setup
 
