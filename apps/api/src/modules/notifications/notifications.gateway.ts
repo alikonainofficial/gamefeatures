@@ -12,6 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { WS_EVENTS } from '@game-review/shared';
+import { webOrigins } from '../../common/web-origins';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -31,8 +32,10 @@ export function publicRoomFrom(data: unknown): string | null {
 }
 
 @WebSocketGateway({
+  // Read from process.env when this file is imported (decorators can't use ConfigService), so
+  // WEB_URL must be a real environment variable in production, not only a .env entry.
   cors: {
-    origin: process.env.WEB_URL || 'http://localhost:3000',
+    origin: webOrigins(process.env.WEB_URL),
     credentials: true,
   },
   namespace: '/notifications',

@@ -12,6 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from '../../common/throttle';
+import { primaryWebUrl } from '../../common/web-origins';
 import { Response, Request } from 'express';
 import { AuthService, OAuthLoginResult } from './auth.service';
 import { UsersService } from '../users/users.service';
@@ -122,7 +123,7 @@ export class AuthController {
    * page reads it and clears it from history.
    */
   private finishOAuth(result: OAuthLoginResult, res: Response) {
-    const webUrl = this.configService.get('WEB_URL') || 'http://localhost:3000';
+    const webUrl = primaryWebUrl(this.configService.get<string>('WEB_URL'));
     if ('error' in result) {
       res.redirect(`${webUrl}/login?error=${result.error}`);
       return;

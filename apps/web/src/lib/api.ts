@@ -1,4 +1,9 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+/**
+ * Base URL for REST calls. By default the relative `/api/v1`: next.config.js rewrites it to
+ * the API (API_ORIGIN), so the browser sees one origin and the SameSite=Lax refresh cookie
+ * keeps working in production. NEXT_PUBLIC_API_URL can still point somewhere else.
+ */
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 /** Error thrown for any non-2xx response. `message` is always a readable string. */
 export class ApiError extends Error {

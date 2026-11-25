@@ -3,6 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import { webOrigins } from './common/web-origins';
 
 /**
  * The HTTP pipeline shared by `main.ts` and the e2e tests, so tests exercise exactly
@@ -22,9 +23,11 @@ export function configureApp(app: INestApplication): INestApplication {
   app.use(helmet());
   app.use(cookieParser());
 
-  // CORS
+  // CORS: WEB_URL may list several origins (comma-separated). In the deployed demo the browser
+  // calls the API through the web app's own origin (Next.js rewrites), so CORS mostly matters
+  // for local development and direct API calls.
   app.enableCors({
-    origin: configService.get('WEB_URL') || 'http://localhost:3000',
+    origin: webOrigins(configService.get<string>('WEB_URL')),
     credentials: true,
   });
 

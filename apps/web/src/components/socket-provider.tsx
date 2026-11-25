@@ -7,8 +7,11 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useNotificationStore } from '@/lib/stores/notification-store';
 
-const SOCKET_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:3001';
+/**
+ * Sockets connect straight to the API server (Vercel's rewrites don't proxy WebSockets).
+ * That's fine cross-origin: the socket authenticates with the access token, not a cookie.
+ */
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
 interface SocketContextValue {
   socket: Socket | null;

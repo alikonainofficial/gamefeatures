@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores/auth-store';
 
 /** Messages for `/login?error=...`, set by the API's OAuth callback. */
@@ -44,8 +45,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
