@@ -8,7 +8,7 @@
 
 ## How to use this plan (instructions for the Claude Code session)
 
-1. Work through the steps **in order**. Each step lists *Why*, *Do*, *Done when* and a *Commit* message.
+1. Work through the steps **in order**, starting from the first unticked box under **Progress**. Read **Handoff notes** (right after Progress) first: they record the environment, commands and conventions earlier sessions established, and where later steps' text is out of date. Each step lists *Why*, *Do*, *Done when* and a *Commit* message.
 2. **One commit per step**, using the commit message given (Conventional Commits). Before each commit run the checks that exist so far (from step 1.3 onward: `pnpm lint && pnpm typecheck && pnpm test`, and from step 1.4 onward also `pnpm test:e2e`). Don't commit a red build.
 3. After finishing a step, tick its box in the **Progress** list below and include that PLAN.md change in the same commit.
 4. Fix bugs **test first**: from Phase 2 on, write the regression test, watch it fail, then fix.
@@ -54,6 +54,59 @@
 - [ ] 6.6 Smoke-test script
 - [ ] 6.7 🧑 MANUAL: create accounts, deploy, seed, smoke-test
 - [ ] 7.1 README, CLAUDE.md and LICENSE
+
+---
+
+## Handoff notes (read before continuing)
+
+Written at the end of the first session (2026-11-24). **Phases 0–5 are done**, pushed to `improvement-plan`, and CI is green on the last commit (`144eea2`). **Next: step 6.1.** Work through 6.1–6.6, then **stop before 6.7** (🧑 MANUAL: the user creates accounts and enters secrets), then do 7.1 after 6.7.
+
+### Environment and local setup
+
+- **Repo setup on a fresh machine/session:** `git fetch origin && git checkout improvement-plan && git pull`, `pnpm install --frozen-lockfile`, then copy the env files: `cp .env.example .env`, `cp apps/api/.env.example apps/api/.env`, `cp apps/web/.env.example apps/web/.env.local`, **and** `cp libs/database/.env.example libs/database/.env` (the Prisma CLI reads `libs/database/.env`, not the root `.env`). Then `pnpm db:generate && pnpm db:migrate && pnpm db:seed`.
+- **Postgres and Redis:** use `docker compose up -d` when Docker works. In the cloud workspace used so far, Docker Hub refused anonymous image pulls (`429 Too Many Requests`), so Postgres 16 and Redis 7 ran natively on the same ports and credentials (Postgres `postgres:postgres@localhost:5432`, DB `game_review`; Redis `localhost:6379`). If you have to do the same, start Redis with `redis-server --port 6379 --daemonize yes --save "" --dir /tmp` so it never writes `dump.rdb` into the repo. Tell the user if Docker isn't running (they asked to be told).
+- **Docker Hub matters for 6.2:** `docker build` needs `node:20-slim`. If pulls are refused again, don't mark 6.2 done without a successful build; tell the user and ask them to run the build/run check on their machine (or retry later).
+- **Network:** `pnpm db:generate` downloads Prisma engines from `binaries.prisma.sh`, and `next build` fetches Google Fonts. Both are reachable now; if a session's network policy blocks them, ask the user to allow those hosts rather than working around it.
+- **Node:** CI pins Node 20 (plan constraint). The workspace had Node 22; that's fine locally.
+
+### Commands and gotchas
+
+- **Checks before every commit:** `pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e` (and `pnpm build` when a step touches build config). Root `pnpm test` runs the API Jest unit tests **and** the web Vitest tests. Turbo caches results; add `-- --force` to re-run.
+- **pnpm 8 passes a literal `--` through to Jest.** Pass Jest flags directly: `pnpm --filter @game-review/api test:e2e --coverage`, or a single file: `pnpm --filter @game-review/api test:e2e test/<name>`. Equivalent: `cd apps/api && npx jest --config ./test/jest-e2e.json test/<name>`.
+- **Coverage:** `apps/api/test/jest-e2e.json` runs `test/**/*.e2e-spec.ts` **and** `src/**/*.spec.ts`, collects coverage from services, `common/**` and `ranking/**`, and enforces `lines: 80` (currently ~95.6%, 167 tests). CI runs it with `--coverage`.
+- **E2E harness** (`apps/api/test/utils/`): `createTestApp()` boots the real `AppModule` with `configureApp()`, listens on a random port and swaps RAWG for `FakeRawgAdapter` (`t.rawg.add(...)`). `resetState(t)` truncates every table, flushes Redis DB 1, drains BullMQ and clears the throttler's in-memory counters; it refuses databases whose name doesn't end in `_test`. Factories: `createUser`, `createGame`, `createRequest`, `createComment`, `notificationsOf`. Also `waitFor()` for queued effects and `socket.ts` (`connectedSocket`, `collect`, `settle`, `closeAllSockets`). Test defaults are in `apps/api/test/.env.test` (high throttle limits; `rate-limit.e2e-spec.ts` lowers `AUTH_THROTTLE_LIMIT` itself).
+- **Web tests:** Vitest 4.1 + jsdom 28 (the newest majors need Node 22), files `apps/web/src/**/*.test.ts`, config `apps/web/vitest.config.mts`.
+- **Prisma migrations that drop data:** `prisma migrate dev` refuses non-interactive shells. Generate SQL with `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url <empty db> --script`, write `prisma/migrations/<timestamp>_<name>/migration.sql` by hand, then `prisma migrate deploy`. See `20261124034500_hash_refresh_tokens`.
+- **Manual UI checks** were done with headless Chrome (`/usr/bin/google-chrome`) driven by `playwright-core`, installed in a temp directory outside the repo (`npm i playwright-core` there). Flow: `pnpm build`, then run `node dist/main.js` from `apps/api` and `npx next start -p 3000` from `apps/web`. When stopping, also kill `next-server` (`pkill -f next-server`): a leftover one keeps serving the old build and its JS chunks 400. Never `pkill -f` a pattern that also appears in your own shell command (it kills the shell). Demo logins: `demo_gamer@demo.gamefeatures.dev` / `demo_dev@demo.gamefeatures.dev`, password `try-the-demo` (the `SEED_DEMO_PASSWORD` default).
+- **Push and CI:** `git -c push.negotiate=true push origin improvement-plan`, then `gh run list -R alikonainofficial/gamefeatures --branch improvement-plan --limit 1` and `gh run view <id> -R alikonainofficial/gamefeatures`. Push at the end of each phase; if CI fails, fix before moving on.
+
+### Conventions established (keep following them)
+
+- A fix to an earlier step gets its **own** `fix(...)` commit plus a Deviations log entry (examples: `fix(build): keep API build output at dist/main.js`, `fix(api): accept seeded request IDs in socket room names`).
+- Bug fixes are test-first; features get e2e coverage of the server side plus a browser check of the UI.
+- **Redis is a derived index.** `RequestRankingService` owns the request sorted sets (rebuild-on-missing marker with a 1-hour TTL, Postgres fallback). Nothing else writes those keys; the seed never touches Redis.
+- **User data out over HTTP** uses `publicUserSelect` / `selfUserSelect` (`modules/users/user.selects.ts`), never a full user row.
+- **Prisma errors** become HTTP codes in `PrismaExceptionFilter` (P2002 → 409, P2025/P2003 → 404); use `isPrismaError(error, 'P2002')` (`common/prisma/is-prisma-error.ts`) to handle expected duplicates.
+- **Votes, likes and follows** are idempotent `PUT`/`DELETE` (`/requests/:id/vote`, `/comments/:id/like`, `/follows/users|games/:id`); the old `POST` toggles were removed.
+- **Throttling** helpers live in `common/throttle.ts` (`positiveInt`, `defaultThrottlers`, `AUTH_THROTTLE`, `IMPORT_THROTTLE`, `userOrIpTracker`). The global `ThrottlerGuard` runs before auth guards.
+- **Web:** the access token lives only in memory (`ApiClient` in `lib/api.ts`, wired to the auth store with `configureAuth`). One socket per tab in `components/socket-provider.tsx`. Unread count and toasts are in `lib/stores/notification-store.ts`. Avoid `useSearchParams` in pages (it needs a Suspense boundary for `next build`); read `window.location` in an effect instead, as the login page does.
+- Two `next lint` warnings already existed before this work (an `<img>` on the request page and a hook-deps warning in `comment-section.tsx`); they're warnings, not errors.
+
+### Where the remaining steps' text is out of date
+
+- **6.1**
+  - `trust proxy` from `TRUST_PROXY_HOPS` already exists (`app.setup.ts`, 3.3), so 6.1 only decides the production value; 6.7 verifies it. `@SkipThrottle()` the health route.
+  - **`DIRECT_URL` must go everywhere `DATABASE_URL` is used for migrations:** `apps/api/test/.env.test` (the e2e `globalSetup` runs `prisma migrate deploy`), both env blocks in `.github/workflows/ci.yml` (the migrate step and the e2e step), and all three `.env.example` files. `seed.e2e-spec.ts` runs the seed with `process.env`, so it inherits it.
+  - `console.log`/`console.error` to replace with Nest `Logger`: `main.ts`, `notifications.gateway.ts`, `fcm.service.ts`. `fcm.service.spec.ts` currently silences `console.log`/`console.error`; update it when FCM switches to `Logger`.
+  - `apps/api/tsconfig.build.json` exists (it keeps the build output at `dist/main.js`); CI fails if that file is missing.
+- **6.3**
+  - The socket URL is the `SOCKET_URL` constant in `apps/web/src/components/socket-provider.tsx` (`hooks/use-socket.ts` only re-exports `useSocket`). The REST base URL is `API_URL` in `apps/web/src/lib/api.ts`.
+  - `WEB_URL` is read in three places: `app.setup.ts` (`enableCors`), `notifications.gateway.ts` (decorator CORS, from `process.env` at import), and `auth.controller.ts` `finishOAuth()` (the OAuth redirect target). With a comma-separated list, OAuth should redirect to the **first** entry.
+  - The refresh cookie is `refreshToken`, `httpOnly`, `sameSite: 'lax'`, `secure` in production, with no explicit `path`.
+- **6.4:** the demo accounts and password already exist (3.7). The login page already shows `?error=account_exists` / `email_required` messages (3.5); keep them when adding the demo buttons.
+- **6.5:** besides the vars listed in 6.5, consider `AUTH_THROTTLE_LIMIT` and `RAWG_TIMEOUT_MS` (both have defaults). The `SEED_*` vars aren't needed on Render (the seed runs from the user's machine in 6.7). Note in the runbook: `/auth/refresh` is rate-limited, so a wrong `TRUST_PROXY_HOPS` would make all visitors share one limit.
+- **6.6:** votes are `PUT`/`DELETE /api/v1/requests/:id/vote`, returning `{ voted, voteCount }`. Seeded game slugs include `portal-2` and `grand-theft-auto-v`. Login/register/refresh allow 10 requests per minute per IP by default, so re-running the smoke test back-to-back can hit 429.
+- **7.1:** the README already has a **Known limitations** section (3.4) and a **Demo accounts** section that replaced the admin table (3.7); expand them rather than adding duplicates. Current test counts: 33 API unit, 15 web, 167 in the e2e coverage run.
 
 ---
 
