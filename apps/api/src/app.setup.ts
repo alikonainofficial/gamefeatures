@@ -1,4 +1,4 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, Logger, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
@@ -18,6 +18,17 @@ export function configureApp(app: INestApplication): INestApplication {
     'trust proxy',
     Number(configService.get('TRUST_PROXY_HOPS') ?? 0) || 0,
   );
+
+  // Opt-in diagnostic for the deploy runbook: logs the client IP Express resolved (and the raw
+  // X-Forwarded-For) so TRUST_PROXY_HOPS can be checked in production without a code change.
+  // Turn it off again afterwards: IP addresses are personal data.
+  if (configService.get('LOG_CLIENT_IP') === 'true') {
+    const logger = new Logger('ClientIp');
+    app.use((req: { ip?: string; headers: Record<string, unknown> }, _res: unknown, next: () => void) => {
+      logger.log(`ip=${req.ip} x-forwarded-for="${req.headers['x-forwarded-for'] ?? ''}"`);
+      next();
+    });
+  }
 
   // Security
   app.use(helmet());
