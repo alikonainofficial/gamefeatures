@@ -17,7 +17,7 @@ async function bootstrap() {
 
   // Swagger documentation
   const config = new DocumentBuilder()
-    .setTitle('Game Review API')
+    .setTitle('GameFeatures API')
     .setDescription('Gaming Feature Request Platform API')
     .setVersion('1.0')
     .addBearerAuth()
