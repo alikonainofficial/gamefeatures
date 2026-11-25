@@ -154,6 +154,28 @@ jobs:
           curl -fsS http://localhost:3001/api/v1/health
           curl -fsS -o /dev/null http://localhost:3001/docs
 
+      # Seed the image's (already migrated) database and run the production smoke test
+      # against the container, so scripts/smoke-test.sh is exercised on every push.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Seed demo data
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm db:generate
+          pnpm db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/game_review_image?schema=public
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/game_review_image?schema=public
+
+      # The API serves /api/v1 itself, so its own URL stands in for the web origin here.
+      - name: Smoke test the running image
+        run: pnpm smoke http://localhost:3001
+
       - name: Container logs
         if: ${{ always() }}
         run: docker logs api || true
