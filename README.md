@@ -1,6 +1,6 @@
 # GameFeatures
 
-[![CI](https://github.com/alikonainofficial/gamefeatures/actions/workflows/ci.yml/badge.svg?branch=improvement-plan)](https://github.com/alikonainofficial/gamefeatures/actions/workflows/ci.yml)
+[![CI](https://github.com/alikonainofficial/gamefeatures/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/alikonainofficial/gamefeatures/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A feature-request board for games. Gamers post ideas for the games they play and upvote the ones they want most; a game's developers see what the community cares about, change a request's status and reply, and everyone involved hears about it in real time.

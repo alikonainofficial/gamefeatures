@@ -139,6 +139,16 @@ OAuth (`GOOGLE_*`, `TWITCH_*`) and push (`FIREBASE_*`) stay unset in the demo.
 - Push to the deployed branch. Vercel builds every push; Render deploys once the commit's CI checks pass (`autoDeployTrigger: checksPass`). The container applies any new migrations on start.
 - After a deploy: `pnpm smoke <vercel url>`.
 
+## Switching the deployed branch
+
+The first deploy tracked `improvement-plan`. To deploy from `main` instead (for example after merging the pull request):
+
+1. **Merge first**, so `main` already contains the deployable code. (Switching first would make Render build the old `main`, which has no Dockerfile.) Keep the old branch until step 3 is done.
+2. **Vercel:** project → **Settings → Environments → Production → Branch Tracking** → `main` → **Save**. Pushes to `main` now create production deployments; to deploy right away, **Deployments → Create Deployment** with branch `main`.
+3. **Render (service):** `gamefeatures-api` → **Settings → Build → Source → Edit** → branch `main` → save. Render then deploys `main` once its CI checks pass.
+4. **Render (Blueprint):** the Blueprint (`render.yaml` sync) is linked to the branch it was created from. If its **Settings** page lets you change the branch, set it to `main`. If not, it stays linked to the old branch: the service still deploys code from `main`, but later `render.yaml` edits won't sync on their own, so apply them in the service's settings (or create a new Blueprint from `main`). In that case don't delete the old branch, since the Blueprint still points at it.
+5. Run `pnpm smoke https://<vercel-app>.vercel.app`.
+
 ## Rollback
 
 **Triggers.** Roll back when any of these happen after a deploy:
