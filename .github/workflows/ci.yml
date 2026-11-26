@@ -75,8 +75,15 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # API_ORIGIN is set as on Vercel: the web build must compile it into its /api/v1 rewrite
+      # (Turborepo's strict env mode only passes variables declared in turbo.json).
       - name: Build
         run: pnpm build
+        env:
+          API_ORIGIN: https://api.example.test
+
+      - name: Check the web build proxies the API
+        run: node scripts/check-web-rewrite.mjs https://api.example.test
 
       # `node apps/api/dist/main.js` is the production entry point (start script, Dockerfile).
       - name: Check API build output

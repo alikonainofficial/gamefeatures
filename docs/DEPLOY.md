@@ -70,7 +70,7 @@ Add `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (16+ characters; the seed refuses
 ### 4. Vercel (web app)
 
 1. **Add New → Project** → import this repo.
-2. **Root Directory:** `apps/web`. Framework preset: Next.js. Vercel detects pnpm from `pnpm-lock.yaml` at the repo root and installs the whole workspace. If the install fails, set the Install Command to `pnpm install --frozen-lockfile` (it runs at the repo root).
+2. **Root Directory:** `apps/web`. Framework preset: Next.js. Leave the Build, Install and Output settings on their defaults: Vercel detects pnpm from `pnpm-lock.yaml` and installs the whole workspace, and [`apps/web/vercel.json`](../apps/web/vercel.json) sets the build command (`turbo run build --filter=@game-review/web`, which compiles `@game-review/shared` before `next build`).
 3. **Environment variables** (Production; all are read at **build** time):
 
    | Name | Value |
@@ -83,7 +83,7 @@ Add `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (16+ characters; the seed refuses
    Leave `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_OAUTH_PROVIDERS` unset.
 4. **Deploy** and note the URL, e.g. `https://gamefeatures.vercel.app`.
 
-`API_ORIGIN` is compiled into the routing table when Next.js builds, so changing it later needs a **redeploy**, not just a saved variable.
+`API_ORIGIN` is compiled into the routing table when Next.js builds, so changing it later needs a **redeploy**, not just a saved variable. It reaches `next build` only because `turbo.json` declares it in the build task's `env` (Turborepo 2 passes undeclared variables nowhere); CI checks the built rewrite with `scripts/check-web-rewrite.mjs`.
 
 ### 5. Point Render at Vercel
 
