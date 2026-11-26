@@ -25,14 +25,19 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     done: VerifyCallback,
   ) {
     const { id, emails, displayName, photos } = profile;
+    const email = emails?.[0];
 
-    const tokens = await this.authService.validateOAuthUser({
-      email: emails[0].value,
+    // The result (tokens or a login error) becomes req.user for the callback route.
+    const result = await this.authService.validateOAuthUser({
+      provider: 'google',
+      providerId: id,
+      email: email?.value,
+      // passport-google-oauth20 maps Google's `email_verified` here (boolean or 'true').
+      emailVerified: email?.verified === true || email?.verified === 'true',
       username: displayName,
       avatarUrl: photos?.[0]?.value,
-      googleId: id,
     });
 
-    done(null, tokens);
+    done(null, result);
   }
 }

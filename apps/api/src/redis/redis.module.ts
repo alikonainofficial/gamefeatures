@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Inject, Module, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -18,4 +18,13 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
   ],
   exports: [REDIS_CLIENT],
 })
-export class RedisModule {}
+export class RedisModule implements OnApplicationShutdown {
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
+
+  // Close the shared connection on app.close() so the process (and Jest) can exit cleanly.
+  async onApplicationShutdown() {
+    if (this.redis.status !== 'end') {
+      await this.redis.quit();
+    }
+  }
+}

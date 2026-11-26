@@ -1,43 +1,23 @@
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import cookieParser from 'cookie-parser';
-import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // Security
-  app.use(helmet());
-  app.use(cookieParser());
+  configureApp(app);
 
-  // CORS
-  app.enableCors({
-    origin: configService.get('WEB_URL') || 'http://localhost:3000',
-    credentials: true,
-  });
-
-  // Global prefix
-  app.setGlobalPrefix('api/v1');
-
-  // Validation
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
+  // On SIGTERM (a Render deploy or restart), close HTTP, sockets, Prisma, Redis and BullMQ
+  // cleanly through the modules' shutdown hooks instead of dropping connections mid-request.
+  app.enableShutdownHooks();
 
   // Swagger documentation
   const config = new DocumentBuilder()
-    .setTitle('Game Review API')
+    .setTitle('GameFeatures API')
     .setDescription('Gaming Feature Request Platform API')
     .setVersion('1.0')
     .addBearerAuth()
@@ -48,7 +28,8 @@ async function bootstrap() {
   const port = configService.get('PORT') || 3001;
   await app.listen(port);
 
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger docs: http://localhost:${port}/docs`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`Application is running on port ${port}`);
+  logger.log(`Swagger docs: /docs`);
 }
 bootstrap();

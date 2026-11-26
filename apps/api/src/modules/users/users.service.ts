@@ -1,27 +1,29 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { publicUserSelect, selfUserSelect } from './user.selects';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findById(id: string) {
+  /** The signed-in user's own view (used by /auth/me). */
+  async findSelf(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
+      select: selfUserSelect,
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
-    const { passwordHash, ...result } = user;
-    return result;
+    return user;
   }
 
   async findByUsername(username: string) {
     const user = await this.prisma.user.findUnique({
       where: { username },
+      select: publicUserSelect,
     });
 
     if (!user) {
@@ -41,9 +43,8 @@ export class UsersService {
       }),
     ]);
 
-    const { passwordHash, ...result } = user;
     return {
-      ...result,
+      ...user,
       followersCount,
       followingCount,
       requestsCount,
@@ -51,13 +52,11 @@ export class UsersService {
   }
 
   async update(id: string, dto: UpdateUserDto) {
-    const user = await this.prisma.user.update({
+    return this.prisma.user.update({
       where: { id },
       data: dto,
+      select: selfUserSelect,
     });
-
-    const { passwordHash, ...result } = user;
-    return result;
   }
 
   async getUserRequests(userId: string, page = 1, limit = 20) {

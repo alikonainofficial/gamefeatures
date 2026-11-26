@@ -1,37 +1,46 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { api } from '@/lib/api';
 
+/** Reads `token` from a URL fragment like `#token=abc`. */
+function tokenFromHash(hash: string): string | null {
+  return new URLSearchParams(hash.replace(/^#/, '')).get('token');
+}
+
+/**
+ * OAuth lands here with the access token in the URL fragment (never sent to any server).
+ * It is read once, removed from the address bar and history, and kept only in memory.
+ */
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { setAccessToken, setUser } = useAuthStore();
 
   useEffect(() => {
+    const token = tokenFromHash(window.location.hash);
+    window.history.replaceState(null, '', window.location.pathname);
+
     async function handleCallback() {
-      const token = searchParams.get('token');
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
 
-      if (token) {
-        setAccessToken(token);
-
-        try {
-          const user = await api.get<any>('/auth/me');
-          setUser(user);
-          router.push('/');
-        } catch (error) {
-          console.error('Failed to fetch user:', error);
-          router.push('/login');
-        }
-      } else {
-        router.push('/login');
+      setAccessToken(token);
+      try {
+        const user = await api.get<any>('/auth/me');
+        setUser(user);
+        router.replace('/');
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+        router.replace('/login');
       }
     }
 
     handleCallback();
-  }, [searchParams, setAccessToken, setUser, router]);
+  }, [setAccessToken, setUser, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

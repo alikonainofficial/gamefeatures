@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Put,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -40,14 +42,19 @@ export class CommentsController {
     return this.commentsService.create(requestId, dto, userId);
   }
 
-  @Post('comments/:id/like')
+  @Put('comments/:id/like')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Toggle like on a comment' })
-  async toggleLike(
-    @Param('id') id: string,
-    @CurrentUser('id') userId: string,
-  ) {
-    return this.commentsService.toggleLike(id, userId);
+  @ApiOperation({ summary: 'Like a comment (idempotent)' })
+  async addLike(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.commentsService.addLike(id, userId);
+  }
+
+  @Delete('comments/:id/like')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove your like from a comment (idempotent)' })
+  async removeLike(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.commentsService.removeLike(id, userId);
   }
 }

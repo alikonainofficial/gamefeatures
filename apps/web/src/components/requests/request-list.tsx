@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/lib/stores/auth-store';
 import { RequestCard } from './request-card';
 
 interface FeatureRequest {
@@ -39,6 +40,9 @@ interface RequestListProps {
 type SortOption = 'hot' | 'top' | 'new';
 
 export function RequestList({ gameSlug, gameId }: RequestListProps) {
+  // Refetch once the session is restored (or on login/logout) so per-user flags such as
+  // hasVoted reflect the signed-in user, not an anonymous visitor.
+  const viewerId = useAuthStore((s) => s.user?.id);
   const [requests, setRequests] = useState<FeatureRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sort, setSort] = useState<SortOption>('hot');
@@ -61,7 +65,7 @@ export function RequestList({ gameSlug, gameId }: RequestListProps) {
       }
     }
     fetchRequests();
-  }, [gameSlug, sort, page]);
+  }, [gameSlug, sort, page, viewerId]);
 
   const handleVoteUpdate = (requestId: string, voted: boolean, voteCount: number) => {
     setRequests((prev) =>

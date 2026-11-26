@@ -7,18 +7,35 @@ import {
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
+import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { WS_EVENTS } from '@game-review/shared';
+import { webOrigins } from '../../common/web-origins';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
 }
 
+/**
+ * `request:<id>`. The prefix is what keeps clients out of private `user:<id>` rooms; the ID
+ * part allows letters, digits, `_` and `-` (cuids and the seed's readable IDs) but never `:`,
+ * so no other room name can be smuggled in. Joining a room for a nonexistent request is harmless.
+ */
+const REQUEST_ROOM = /^request:[A-Za-z0-9_-]{1,64}$/;
+
+/** Returns the requested room if a client may join it, otherwise null. */
+export function publicRoomFrom(data: unknown): string | null {
+  const room = (data as { room?: unknown } | null | undefined)?.room;
+  return typeof room === 'string' && REQUEST_ROOM.test(room) ? room : null;
+}
+
 @WebSocketGateway({
+  // Read from process.env when this file is imported (decorators can't use ConfigService), so
+  // WEB_URL must be a real environment variable in production, not only a .env entry.
   cors: {
-    origin: process.env.WEB_URL || 'http://localhost:3000',
+    origin: webOrigins(process.env.WEB_URL),
     credentials: true,
   },
   namespace: '/notifications',
@@ -27,6 +44,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   @WebSocketServer()
   server: Server;
 
+  private readonly logger = new Logger(NotificationsGateway.name);
   private userSockets = new Map<string, Set<string>>(); // userId -> socketIds
 
   constructor(
@@ -59,7 +77,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       // Join user-specific room
       client.join(`user:${userId}`);
 
-      console.log(`Client connected: ${client.id} (user: ${client.userId})`);
+      this.logger.log(`Client connected: ${client.id} (user: ${client.userId})`);
     } catch (error) {
       client.disconnect();
     }
@@ -75,25 +93,25 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
         }
       }
     }
-    console.log(`Client disconnected: ${client.id}`);
+    this.logger.log(`Client disconnected: ${client.id}`);
   }
 
+  // Clients may only join public per-request rooms (live vote counts). The private
+  // `user:<id>` room is joined by the server in handleConnection and nowhere else.
   @SubscribeMessage(WS_EVENTS.subscribe)
-  handleSubscribe(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { room: string },
-  ) {
-    client.join(data.room);
-    return { subscribed: data.room };
+  handleSubscribe(@ConnectedSocket() client: AuthenticatedSocket, @MessageBody() data: unknown) {
+    const room = publicRoomFrom(data);
+    if (!room) return { error: 'Invalid room' };
+    client.join(room);
+    return { subscribed: room };
   }
 
   @SubscribeMessage(WS_EVENTS.unsubscribe)
-  handleUnsubscribe(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { room: string },
-  ) {
-    client.leave(data.room);
-    return { unsubscribed: data.room };
+  handleUnsubscribe(@ConnectedSocket() client: AuthenticatedSocket, @MessageBody() data: unknown) {
+    const room = publicRoomFrom(data);
+    if (!room) return { error: 'Invalid room' };
+    client.leave(room);
+    return { unsubscribed: room };
   }
 
   // Send to specific user

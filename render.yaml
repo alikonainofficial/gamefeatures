@@ -1,0 +1,62 @@
+# Render Blueprint for the GameFeatures API (free tier). See docs/DEPLOY.md.
+# Postgres is on Neon (Render's free Postgres expires after 30 days); the web app is on Vercel.
+# Spec: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: gamefeatures-api
+    runtime: docker
+    plan: free
+    # Region can't be changed later. Keep it close to the Neon project's region
+    # (frankfurt <-> Neon aws-eu-central-1), and in the same region as the Key Value below.
+    region: frankfurt
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    # Deploy a new commit only after its GitHub checks (CI) pass.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Neon: DATABASE_URL = pooled connection string, DIRECT_URL = direct one (migrations).
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: gamefeatures-kv
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      # The Vercel URL (comma-separated if several). CORS, socket CORS and OAuth redirects.
+      - key: WEB_URL
+        sync: false
+      # Public base URL used for OAuth callback URLs. With the Vercel rewrite this is also the
+      # Vercel URL (OAuth is off in the demo, but keep it correct).
+      - key: API_URL
+        sync: false
+      # browser -> Vercel (rewrite) -> Render's proxy -> API: skip 2 hops to find the client IP.
+      # Verified in the deploy runbook; a wrong value makes all visitors share one rate limit.
+      - key: TRUST_PROXY_HOPS
+        value: '2'
+      - key: THROTTLE_TTL_MS
+        value: '60000'
+      - key: THROTTLE_LIMIT
+        value: '100'
+      # login/register/refresh, per minute per client IP
+      - key: AUTH_THROTTLE_LIMIT
+        value: '10'
+
+  # Free Key Value: in-memory only, data is lost on restart. That's fine: Redis holds only the
+  # rebuildable ranking index and short-lived BullMQ jobs.
+  - type: keyvalue
+    name: gamefeatures-kv
+    plan: free
+    region: frankfurt
+    # Internal connections only (no external access).
+    ipAllowList: []
+    # BullMQ requires noeviction: an LRU policy could silently evict queued jobs.
+    maxmemoryPolicy: noeviction

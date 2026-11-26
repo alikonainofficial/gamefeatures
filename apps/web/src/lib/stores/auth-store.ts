@@ -22,9 +22,12 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  refresh: () => Promise<void>;
+  /** Exchanges the refresh-token cookie for a new access token. Throws if the session is gone. */
+  refresh: () => Promise<string>;
   initialize: () => Promise<void>;
 }
+
+const signedOut = { user: null, accessToken: null, isAuthenticated: false } as const;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -80,30 +83,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       // Ignore errors
     }
-    set({ user: null, accessToken: null, isAuthenticated: false });
+    set({ ...signedOut });
   },
 
   refresh: async () => {
-    try {
-      const response = await api.post<{ accessToken: string }>('/auth/refresh', {});
-      set({ accessToken: response.accessToken });
-    } catch (error) {
-      set({ user: null, accessToken: null, isAuthenticated: false });
-    }
+    const response = await api.post<{ accessToken: string }>('/auth/refresh', {});
+    set({ accessToken: response.accessToken });
+    return response.accessToken;
   },
 
   initialize: async () => {
     set({ isLoading: true });
     try {
-      // Try to refresh token
-      const response = await api.post<{ accessToken: string }>('/auth/refresh', {});
-      set({ accessToken: response.accessToken });
+      // Restore the session from the refresh-token cookie. This goes through the client's
+      // shared refresh, so it can't race a refresh triggered by a 401 elsewhere on the page.
+      const token = await api.refreshAccessToken();
+      if (!token) {
+        set({ ...signedOut, isLoading: false });
+        return;
+      }
 
-      // Fetch user data
       const user = await api.get<User>('/auth/me');
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (error) {
-      set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
+      set({ ...signedOut, isLoading: false });
     }
   },
 }));
+
+// Give the API client access to the in-memory token (done here to avoid a circular import).
+api.configureAuth({
+  getAccessToken: () => useAuthStore.getState().accessToken,
+  refresh: () => useAuthStore.getState().refresh(),
+  onAuthFailure: () => useAuthStore.setState({ ...signedOut }),
+});

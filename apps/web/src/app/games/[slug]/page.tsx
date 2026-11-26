@@ -30,8 +30,12 @@ export default function GamePage() {
   const [game, setGame] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { isAuthenticated } = useAuthStore();
+  // Refetch once the session is restored (or on login/logout) so per-user flags such as
+  // hasVoted / isFollowing / hasLiked reflect the signed-in user, not an anonymous visitor.
+  const viewerId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     async function fetchGame() {
@@ -46,16 +50,22 @@ export default function GamePage() {
       }
     }
     fetchGame();
-  }, [slug]);
+  }, [slug, viewerId]);
 
   const handleFollowToggle = async () => {
-    if (!game || !isAuthenticated) return;
+    if (!game || !isAuthenticated || isFollowLoading) return;
 
+    setIsFollowLoading(true);
     try {
-      const result = await api.post<{ following: boolean }>(`/follows/games/${game.id}`, {});
+      const path = `/follows/games/${game.id}`;
+      const result = isFollowing
+        ? await api.delete<{ following: boolean }>(path)
+        : await api.put<{ following: boolean }>(path);
       setIsFollowing(result.following);
     } catch (error) {
-      console.error('Failed to toggle follow:', error);
+      console.error('Failed to update follow:', error);
+    } finally {
+      setIsFollowLoading(false);
     }
   };
 
@@ -136,6 +146,7 @@ export default function GamePage() {
               {isAuthenticated && (
                 <button
                   onClick={handleFollowToggle}
+                  disabled={isFollowLoading}
                   className={`flex items-center px-4 py-2 rounded-lg font-medium transition ${
                     isFollowing
                       ? 'bg-red-100 text-red-600 hover:bg-red-200'

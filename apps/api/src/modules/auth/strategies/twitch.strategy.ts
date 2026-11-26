@@ -36,13 +36,16 @@ export class TwitchStrategy extends PassportStrategy(Strategy, 'twitch') {
       return done(new Error('Failed to fetch Twitch user'), null);
     }
 
-    const tokens = await this.authService.validateOAuthUser({
+    const result = await this.authService.validateOAuthUser({
+      provider: 'twitch',
+      providerId: twitchUser.id,
       email: twitchUser.email,
+      // Twitch accounts are never linked to an existing account by email.
+      emailVerified: false,
       username: twitchUser.display_name || twitchUser.login,
       avatarUrl: twitchUser.profile_image_url,
-      twitchId: twitchUser.id,
     });
 
-    done(null, tokens);
+    done(null, result);
   }
 }

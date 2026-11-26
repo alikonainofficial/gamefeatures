@@ -1,8 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { isPrismaError } from '../../common/prisma/is-prisma-error';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { MAX_COMMENT_DEPTH } from '@game-review/shared';
+
+export interface LikeResult {
+  liked: boolean;
+  likeCount: number;
+}
 
 @Injectable()
 export class CommentsService {
@@ -128,58 +134,53 @@ export class CommentsService {
     return rootComments;
   }
 
-  async toggleLike(commentId: string, userId: string): Promise<{ liked: boolean; likeCount: number }> {
-    const comment = await this.prisma.comment.findUnique({
-      where: { id: commentId },
+  /** Idempotent: liking again is a no-op that returns the current count. */
+  async addLike(commentId: string, userId: string): Promise<LikeResult> {
+    try {
+      const { likeCount } = await this.prisma.$transaction(async (tx) => {
+        await tx.commentLike.create({ data: { commentId, userId } });
+        return tx.comment.update({
+          where: { id: commentId },
+          data: { likeCount: { increment: 1 } },
+          select: { likeCount: true },
+        });
+      });
+      return { liked: true, likeCount };
+    } catch (error) {
+      // Duplicate like: already liked. A missing comment (P2003) becomes 404 via the filter.
+      if (!isPrismaError(error, 'P2002')) throw error;
+      return { liked: true, likeCount: await this.currentLikeCount(commentId) };
+    }
+  }
+
+  /** Idempotent: unliking a comment you don't like returns the current count. */
+  async removeLike(commentId: string, userId: string): Promise<LikeResult> {
+    const comment = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.commentLike.deleteMany({ where: { commentId, userId } });
+      return count === 1
+        ? tx.comment.update({
+            where: { id: commentId },
+            data: { likeCount: { decrement: 1 } },
+            select: { likeCount: true },
+          })
+        : tx.comment.findUnique({ where: { id: commentId }, select: { likeCount: true } });
     });
 
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
+    return { liked: false, likeCount: comment.likeCount };
+  }
 
-    const existingLike = await this.prisma.commentLike.findUnique({
-      where: {
-        commentId_userId: { commentId, userId },
-      },
+  private async currentLikeCount(commentId: string): Promise<number> {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { likeCount: true },
     });
-
-    if (existingLike) {
-      // Remove like
-      await this.prisma.$transaction([
-        this.prisma.commentLike.delete({
-          where: { id: existingLike.id },
-        }),
-        this.prisma.comment.update({
-          where: { id: commentId },
-          data: { likeCount: { decrement: 1 } },
-        }),
-      ]);
-
-      const updated = await this.prisma.comment.findUnique({
-        where: { id: commentId },
-        select: { likeCount: true },
-      });
-
-      return { liked: false, likeCount: updated!.likeCount };
-    } else {
-      // Add like
-      await this.prisma.$transaction([
-        this.prisma.commentLike.create({
-          data: { commentId, userId },
-        }),
-        this.prisma.comment.update({
-          where: { id: commentId },
-          data: { likeCount: { increment: 1 } },
-        }),
-      ]);
-
-      const updated = await this.prisma.comment.findUnique({
-        where: { id: commentId },
-        select: { likeCount: true },
-      });
-
-      return { liked: true, likeCount: updated!.likeCount };
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
     }
+    return comment.likeCount;
   }
 
   private async getCommentDepth(commentId: string): Promise<number> {

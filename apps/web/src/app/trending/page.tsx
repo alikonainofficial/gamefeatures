@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/lib/stores/auth-store';
 import { RequestCard } from '@/components/requests/request-card';
 import { TrendingUp, Flame } from 'lucide-react';
 
@@ -39,6 +40,9 @@ interface Game {
 }
 
 export default function TrendingPage() {
+  // Refetch once the session is restored (or on login/logout) so per-user flags such as
+  // hasVoted reflect the signed-in user, not an anonymous visitor.
+  const viewerId = useAuthStore((s) => s.user?.id);
   const [topRequests, setTopRequests] = useState<FeatureRequest[]>([]);
   const [popularGames, setPopularGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +85,7 @@ export default function TrendingPage() {
       }
     }
     fetchTrending();
-  }, []);
+  }, [viewerId]);
 
   const handleVoteUpdate = (requestId: string, voted: boolean, voteCount: number) => {
     setTopRequests((prev) =>

@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { useSocket } from '@/hooks/use-socket';
+import { WS_EVENTS } from '@game-review/shared';
 import { CommentSection } from '@/components/comments/comment-section';
 import { ChevronUp, ArrowLeft, User, Clock, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -48,7 +50,29 @@ export default function RequestPage() {
   const [request, setRequest] = useState<FeatureRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVoting, setIsVoting] = useState(false);
+  const { socket, subscribe, unsubscribe } = useSocket();
+
+  // Live vote count from other viewers. The socket needs a signed-in user; anonymous
+  // visitors just see the count from page load.
+  useEffect(() => {
+    if (!socket || !id) return;
+    const room = `request:${id}`;
+    const onVoteUpdate = (update: { requestId: string; voteCount: number }) => {
+      if (update.requestId !== id) return;
+      setRequest((prev) => (prev ? { ...prev, voteCount: update.voteCount } : prev));
+    };
+
+    socket.on(WS_EVENTS.voteUpdate, onVoteUpdate);
+    subscribe(room);
+    return () => {
+      socket.off(WS_EVENTS.voteUpdate, onVoteUpdate);
+      unsubscribe(room);
+    };
+  }, [socket, id, subscribe, unsubscribe]);
   const { isAuthenticated } = useAuthStore();
+  // Refetch once the session is restored (or on login/logout) so per-user flags such as
+  // hasVoted / isFollowing / hasLiked reflect the signed-in user, not an anonymous visitor.
+  const viewerId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     async function fetchRequest() {
@@ -62,17 +86,17 @@ export default function RequestPage() {
       }
     }
     fetchRequest();
-  }, [id]);
+  }, [id, viewerId]);
 
   const handleVote = async () => {
     if (!isAuthenticated || isVoting || !request) return;
 
     setIsVoting(true);
     try {
-      const result = await api.post<{ voted: boolean; voteCount: number }>(
-        `/requests/${id}/upvote`,
-        {}
-      );
+      const path = `/requests/${id}/vote`;
+      const result = request.hasVoted
+        ? await api.delete<{ voted: boolean; voteCount: number }>(path)
+        : await api.put<{ voted: boolean; voteCount: number }>(path);
       setRequest((prev) =>
         prev ? { ...prev, hasVoted: result.voted, voteCount: result.voteCount } : prev
       );

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bullmq';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -12,6 +13,9 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { FollowsModule } from './modules/follows/follows.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { HealthModule } from './modules/health/health.module';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { defaultThrottlers } from './common/throttle';
 
 @Module({
   imports: [
@@ -21,13 +25,12 @@ import { AdminModule } from './modules/admin/admin.module';
       envFilePath: ['.env.local', '.env'],
     }),
 
-    // Rate limiting
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 100,
-      },
-    ]),
+    // Rate limiting (enforced by the global ThrottlerGuard below)
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => defaultThrottlers(configService),
+    }),
 
     // BullMQ
     BullModule.forRootAsync({
@@ -53,6 +56,11 @@ import { AdminModule } from './modules/admin/admin.module';
     FollowsModule,
     NotificationsModule,
     AdminModule,
+    HealthModule,
+  ],
+  providers: [
+    { provide: APP_FILTER, useClass: PrismaExceptionFilter },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

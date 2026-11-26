@@ -11,7 +11,9 @@ import { GamesService } from './games.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalAuthGuard } from '../auth/guards/optional-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { ListGamesQueryDto } from './dto/list-games-query.dto';
+import { Throttle } from '@nestjs/throttler';
+import { IMPORT_THROTTLE } from '../../common/throttle';
 import { SearchGamesDto } from './dto/search-games.dto';
 
 @ApiTags('games')
@@ -21,8 +23,8 @@ export class GamesController {
 
   @Get()
   @ApiOperation({ summary: 'List games (from local database)' })
-  async findAll(@Query() pagination: PaginationDto, @Query('search') search?: string) {
-    return this.gamesService.findAll(pagination.page, pagination.limit, search);
+  async findAll(@Query() query: ListGamesQueryDto) {
+    return this.gamesService.findAll(query.page, query.limit, query.search);
   }
 
   @Get('search/rawg')
@@ -32,6 +34,7 @@ export class GamesController {
   }
 
   @Post('import/:externalId')
+  @Throttle(IMPORT_THROTTLE)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Import a game from RAWG' })

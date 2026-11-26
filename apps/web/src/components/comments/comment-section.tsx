@@ -32,10 +32,13 @@ export function CommentSection({ requestId }: CommentSectionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const { isAuthenticated } = useAuthStore();
+  // Refetch once the session is restored (or on login/logout) so per-user flags such as
+  // hasVoted / isFollowing / hasLiked reflect the signed-in user, not an anonymous visitor.
+  const viewerId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     fetchComments();
-  }, [requestId]);
+  }, [requestId, viewerId]);
 
   const fetchComments = async () => {
     try {
@@ -68,12 +71,12 @@ export function CommentSection({ requestId }: CommentSectionProps) {
     }
   };
 
-  const handleLike = async (commentId: string) => {
+  const handleLike = async (commentId: string, hasLiked: boolean) => {
     try {
-      const result = await api.post<{ liked: boolean; likeCount: number }>(
-        `/comments/${commentId}/like`,
-        {}
-      );
+      const path = `/comments/${commentId}/like`;
+      const result = hasLiked
+        ? await api.delete<{ liked: boolean; likeCount: number }>(path)
+        : await api.put<{ liked: boolean; likeCount: number }>(path);
       updateCommentLike(comments, commentId, result.liked, result.likeCount);
       setComments([...comments]);
     } catch (error) {

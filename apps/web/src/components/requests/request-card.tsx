@@ -49,10 +49,11 @@ export function RequestCard({ request, onVoteUpdate }: RequestCardProps) {
 
     setIsVoting(true);
     try {
-      const result = await api.post<{ voted: boolean; voteCount: number }>(
-        `/requests/${request.id}/upvote`,
-        {}
-      );
+      // PUT/DELETE are idempotent: a double click can't flip the vote back.
+      const path = `/requests/${request.id}/vote`;
+      const result = request.hasVoted
+        ? await api.delete<{ voted: boolean; voteCount: number }>(path)
+        : await api.put<{ voted: boolean; voteCount: number }>(path);
       onVoteUpdate?.(request.id, result.voted, result.voteCount);
     } catch (error) {
       console.error('Failed to vote:', error);

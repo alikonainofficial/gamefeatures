@@ -5,7 +5,9 @@ import { PrismaClient } from '@game-review/database';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {
     super({
-      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      // Outside development, errors are not logged here: expected ones (e.g. a duplicate vote,
+      // P2002) are handled, and unexpected ones reach Nest's logger through the exception filter.
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['warn'],
     });
   }
 

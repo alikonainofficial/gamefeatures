@@ -1,27 +1,19 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  Inject,
-} from '@nestjs/common';
-import Redis from 'ioredis';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { REDIS_CLIENT } from '../../redis/redis.module';
 import { GamesService } from '../games/games.service';
 import { VotesService } from './votes.service';
+import { RequestRankingService } from './ranking/request-ranking.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
+import { RequestSort } from './dto/list-requests-query.dto';
 import { RequestStatus, UserType } from '@game-review/database';
-import { REDIS_KEYS } from '@game-review/shared';
-
-type SortOption = 'hot' | 'top' | 'new';
 
 @Injectable()
 export class RequestsService {
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    private readonly ranking: RequestRankingService,
     private readonly gamesService: GamesService,
     private readonly votesService: VotesService,
     private readonly notificationsService: NotificationsService,
@@ -47,8 +39,7 @@ export class RequestsService {
       },
     });
 
-    // Update Redis caches
-    await this.addToRedisCache(request.id, game.id, 0, request.createdAt);
+    await this.ranking.upsert(request);
 
     // Notify followers of the author
     await this.notificationsService.notifyFollowersOfNewRequest(
@@ -98,7 +89,7 @@ export class RequestsService {
 
   async findByGame(
     gameSlug: string,
-    sort: SortOption = 'hot',
+    sort: RequestSort = 'hot',
     page = 1,
     limit = 20,
     userId?: string,
@@ -112,57 +103,27 @@ export class RequestsService {
     }
 
     const skip = (page - 1) * limit;
+    const { ids, total } = await this.ranking.page(game.id, sort, skip, limit);
 
-    // Try to get from Redis cache first
-    const cachedIds = await this.getFromRedisCache(game.id, sort, skip, limit);
-
-    let requests;
-    let total;
-
-    if (cachedIds && cachedIds.length > 0) {
-      // Fetch requests by IDs
-      requests = await this.prisma.featureRequest.findMany({
-        where: { id: { in: cachedIds } },
-        include: {
-          author: {
-            select: { id: true, username: true, avatarUrl: true },
-          },
-          game: true,
-          _count: {
-            select: { comments: true },
-          },
-        },
-      });
-
-      // Sort by cached order
-      const idOrder = new Map(cachedIds.map((id, index) => [id, index]));
-      requests.sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
-
-      total = await this.redis.zcard(this.getRedisKey(game.id, sort));
-    } else {
-      // Fallback to database
-      const orderBy = this.getOrderBy(sort);
-      [requests, total] = await Promise.all([
-        this.prisma.featureRequest.findMany({
-          where: { gameId: game.id },
-          include: {
-            author: {
-              select: { id: true, username: true, avatarUrl: true },
+    const rows =
+      ids.length > 0
+        ? await this.prisma.featureRequest.findMany({
+            where: { id: { in: ids } },
+            include: {
+              author: {
+                select: { id: true, username: true, avatarUrl: true },
+              },
+              game: true,
+              _count: {
+                select: { comments: true },
+              },
             },
-            game: true,
-            _count: {
-              select: { comments: true },
-            },
-          },
-          orderBy,
-          skip,
-          take: limit,
-        }),
-        this.prisma.featureRequest.count({
-          where: { gameId: game.id },
-        }),
-      ]);
-    }
+          })
+        : [];
+
+    // Keep the ranking order (findMany doesn't preserve the order of `in`).
+    const position = new Map(ids.map((id, index) => [id, index]));
+    const requests = rows.sort((a, b) => position.get(a.id)! - position.get(b.id)!);
 
     // Get user votes
     let votedSet = new Set<string>();
@@ -252,73 +213,5 @@ export class RequestsService {
     }
 
     return updated;
-  }
-
-  private async addToRedisCache(
-    requestId: string,
-    gameId: string,
-    voteCount: number,
-    createdAt: Date,
-  ) {
-    await Promise.all([
-      this.redis.zadd(REDIS_KEYS.gameRequestsTop(gameId), voteCount, requestId),
-      this.redis.zadd(REDIS_KEYS.gameRequestsNew(gameId), createdAt.getTime(), requestId),
-      this.redis.zadd(
-        REDIS_KEYS.gameRequestsHot(gameId),
-        this.calculateHotScore(voteCount, createdAt),
-        requestId,
-      ),
-    ]);
-  }
-
-  private async getFromRedisCache(
-    gameId: string,
-    sort: SortOption,
-    start: number,
-    count: number,
-  ): Promise<string[] | null> {
-    const key = this.getRedisKey(gameId, sort);
-    const isDescending = sort !== 'new'; // new is ascending (oldest first)
-
-    try {
-      if (isDescending) {
-        return await this.redis.zrevrange(key, start, start + count - 1);
-      } else {
-        return await this.redis.zrange(key, start, start + count - 1);
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  private getRedisKey(gameId: string, sort: SortOption): string {
-    switch (sort) {
-      case 'top':
-        return REDIS_KEYS.gameRequestsTop(gameId);
-      case 'new':
-        return REDIS_KEYS.gameRequestsNew(gameId);
-      case 'hot':
-      default:
-        return REDIS_KEYS.gameRequestsHot(gameId);
-    }
-  }
-
-  private getOrderBy(sort: SortOption) {
-    switch (sort) {
-      case 'top':
-        return { voteCount: 'desc' as const };
-      case 'new':
-        return { createdAt: 'desc' as const };
-      case 'hot':
-      default:
-        return [{ voteCount: 'desc' as const }, { createdAt: 'desc' as const }];
-    }
-  }
-
-  private calculateHotScore(voteCount: number, createdAt: Date): number {
-    const order = Math.log10(Math.max(Math.abs(voteCount), 1));
-    const sign = voteCount > 0 ? 1 : voteCount < 0 ? -1 : 0;
-    const seconds = createdAt.getTime() / 1000 - 1134028003;
-    return sign * order + seconds / 45000;
   }
 }

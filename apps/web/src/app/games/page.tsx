@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { GameCard } from '@/components/games/game-card';
@@ -28,6 +28,32 @@ interface GamesResponse {
 }
 
 export default function GamesPage() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">Browse Games</h1>
+        <SearchBar />
+      </div>
+
+      {/* useSearchParams() needs a Suspense boundary, or `next build` fails to prerender this page. */}
+      <Suspense fallback={<GamesGridSkeleton />}>
+        <GamesResults />
+      </Suspense>
+    </div>
+  );
+}
+
+function GamesGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {[...Array(12)].map((_, i) => (
+        <div key={i} className="bg-gray-200 rounded-lg h-64 animate-pulse" />
+      ))}
+    </div>
+  );
+}
+
+function GamesResults() {
   const searchParams = useSearchParams();
   const search = searchParams.get('search') || '';
   const [games, setGames] = useState<Game[]>([]);
@@ -63,27 +89,15 @@ export default function GamesPage() {
   }, [search]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Browse Games</h1>
-        <SearchBar />
-      </div>
-
+    <>
       {search && (
         <p className="text-gray-600 mb-6">
-          Showing results for "<span className="font-medium">{search}</span>"
+          Showing results for &quot;<span className="font-medium">{search}</span>&quot;
         </p>
       )}
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[...Array(12)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-gray-200 rounded-lg h-64 animate-pulse"
-            />
-          ))}
-        </div>
+        <GamesGridSkeleton />
       ) : games.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-600 text-lg">No games found.</p>
@@ -127,6 +141,6 @@ export default function GamesPage() {
           )}
         </>
       )}
-    </div>
+    </>
   );
 }

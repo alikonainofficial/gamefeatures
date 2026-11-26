@@ -90,7 +90,7 @@ export default function DevelopersPage() {
               <div>
                 <h3 className="font-semibold text-gray-900">Get Verified</h3>
                 <p className="text-gray-600">
-                  Contact us to verify your developer status. We'll confirm your identity and grant access to your game's page.
+                  Contact us to verify your developer status. We&apos;ll confirm your identity and grant access to your game&apos;s page.
                 </p>
               </div>
             </div>
@@ -114,7 +114,7 @@ export default function DevelopersPage() {
               <div>
                 <h3 className="font-semibold text-gray-900">Update Status</h3>
                 <p className="text-gray-600">
-                  Mark requests as "Under Review", "In Progress", or "Implemented". Add your response to let players know you're listening.
+                  Mark requests as &quot;Under Review&quot;, &quot;In Progress&quot;, or &quot;Implemented&quot;. Add your response to let players know you&apos;re listening.
                 </p>
               </div>
             </div>

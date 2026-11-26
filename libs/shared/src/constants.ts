@@ -14,6 +14,8 @@ export const REDIS_KEYS = {
   gameRequestsTop: (gameId: string) => `game:${gameId}:requests:top`,
   gameRequestsNew: (gameId: string) => `game:${gameId}:requests:new`,
   gameRequestsHot: (gameId: string) => `game:${gameId}:requests:hot`,
+  /** Present when the three sorted sets above hold every request of the game. */
+  gameRequestsIndexed: (gameId: string) => `game:${gameId}:requests:indexed`,
   userVotes: (userId: string) => `user:${userId}:votes`,
   userSession: (userId: string) => `user:${userId}:session`,
 } as const;
@@ -35,8 +37,12 @@ export const WS_EVENTS = {
 // API paths
 export const API_PREFIX = '/api/v1';
 
-// Hot score decay (in hours)
-export const HOT_SCORE_DECAY_HOURS = 24;
+// Username constraints (register and profile update use the same rules)
+export const USERNAME_MIN_LENGTH = 3;
+export const USERNAME_MAX_LENGTH = 30;
+export const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
+export const USERNAME_RULES_MESSAGE =
+  'Username can only contain letters, numbers, and underscores';
 
 // Comment constraints
 export const MAX_COMMENT_LENGTH = 5000;
